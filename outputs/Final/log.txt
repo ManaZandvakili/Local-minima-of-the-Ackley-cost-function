@@ -1,9 +1,0 @@
-[Warning] PyVista not found — pip install pyvista
-  [Cost configuration]  active = ['J3', 'J4', 'J5', 'J8']   excluded = ['J1', 'J2', 'J6', 'J7', 'J9']
-
-============================================================
-  Geometry : Sphere
-============================================================
-  d_min    = 0.2822 normalised  (44.4 cm physical)
-  Trial 1/20
-  Trial 2/20
