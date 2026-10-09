@@ -5,9 +5,10 @@ A candidate mounting position p_i is rejected when its normalised
 direction lies inside a 35 deg cone around the downward gondola axis:
         (p_i / |p_i|) . g  >  cos(35 deg),     g = [0, 0, -1]^T
 
-Left : 3-D sphere with the keep-out cap, the K = 30 Fibonacci candidates
+3-D sphere with the keep-out cap, the K = 30 Fibonacci candidates
        (allowed vs rejected) and the gondola.
-Right: side cross-section (X-Z plane) showing the 35 deg cone around g.
+Optional (SHOW_CROSS_SECTION = True): side cross-section (X-Z plane)
+showing the 35 deg cone around g.
 
 Usage:
     python gondola_keepout.py  -> shows the figure and saves gondola_keepout.png
@@ -22,6 +23,7 @@ R               = 1.575         # sphere radius [m]
 K               = 30
 KEEPOUT_DEG     = 35.0
 SHOW_CANDIDATES = True          # False: hull + keep-out zone only
+SHOW_CROSS_SECTION = False      # True: add the 2-D side cross-section panel
 OUT_FILE        = "gondola_keepout.png"
 
 C_HULL  = "lightblue"; C_EDGE = "#6a8fa6"
@@ -128,9 +130,13 @@ def panel_2d(ax):
 
 
 def main():
-    fig = plt.figure(figsize=(15, 7))
-    panel_3d(fig.add_subplot(1, 2, 1, projection="3d"))
-    panel_2d(fig.add_subplot(1, 2, 2))
+    if SHOW_CROSS_SECTION:
+        fig = plt.figure(figsize=(15, 7))
+        panel_3d(fig.add_subplot(1, 2, 1, projection="3d"))
+        panel_2d(fig.add_subplot(1, 2, 2))
+    else:
+        fig = plt.figure(figsize=(8, 8.5))
+        panel_3d(fig.add_subplot(1, 1, 1, projection="3d"))
 
     handles = [Patch(color=C_HULL, alpha=0.6, label="Hull"),
                Patch(color=C_KO, alpha=0.55,
@@ -141,8 +147,10 @@ def main():
                     Line2D([], [], marker="X", ls="none", color=C_KO,
                            markeredgecolor="black", ms=10,
                            label="Rejected candidate")]
-    fig.legend(handles=handles, loc="lower center", ncol=len(handles),
-               fontsize=12, frameon=False)
+    fig.legend(handles=handles, loc="lower center",
+               ncol=len(handles) if SHOW_CROSS_SECTION else 2,
+               fontsize=12, frameon=False,
+               bbox_to_anchor=(0.5, 0.0 if SHOW_CROSS_SECTION else 0.13))
     plt.tight_layout(rect=(0, 0.06, 1, 1))
     fig.savefig(OUT_FILE, dpi=300, bbox_inches="tight")
     print(f"Saved {OUT_FILE}")
