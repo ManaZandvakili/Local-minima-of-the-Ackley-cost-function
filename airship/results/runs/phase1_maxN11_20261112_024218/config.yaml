@@ -1,0 +1,167 @@
+hull:
+  air:
+    density_kg_m3: 1.225
+  dynamics:
+    control_hz: 10
+    disturbance_torque_sigma_Nm: 0.05
+    drag_coeff: 0.4
+    physics_hz: 100
+    rot_damping_lin:
+    - 2.0
+    - 2.0
+    - 2.0
+    rot_damping_quad:
+    - 5.0
+    - 5.0
+    - 5.0
+  hull:
+    ballast_bars_kg:
+    - 1.0
+    - 1.0
+    - 1.0
+    ballonet_volume_m3: 0.28
+    diameter_m: 3.15
+    shape: sphere
+    volume_m3: 16.4
+  mass:
+    added_inertia_kgm2:
+    - 0.0
+    - 0.0
+    - 0.0
+    added_mass_coeff: 0.5
+    components:
+      air_blower:
+        kg: 0.34
+        kind: point
+        z_m: -1.825
+      ballonet_air:
+        kg: 0.185
+        kind: point
+        z_m: -1.165
+      envelope_and_fittings:
+        kg: 6.485
+        kind: shell
+      gondola_electronics:
+        kg: 2.792
+        kind: point
+        z_m: -1.825
+      helium:
+        kg: 2.871
+        kind: solid_sphere
+      hull_escs:
+        kg: 0.13
+        kind: ring
+        ring_m: 1.575
+        z_m: 0.0
+      hull_motors_mounts:
+        kg: 2.08
+        kind: ring
+        ring_m: 1.575
+        z_m: 0.0
+      screws_washers:
+        kg: 0.165
+        kind: shell
+      top_payload:
+        kg: 1.062
+        kind: point
+        z_m: 1.575
+      valve_covers:
+        kg: 0.051
+        kind: point
+        z_m: -1.575
+    gondola_drop_m: 0.25
+    helium_in_inertia: true
+    trim:
+      kind: ring
+      mode: neutral
+      ring_m: 0.615
+      z_m: -1.45
+  operating_limits:
+    gust_max_m_s: 8.3
+    max_altitude_agl_m: 8.0
+    max_horizontal_radius_m: 20.0
+    sustained_wind_max_m_s: 5.6
+  optimizer:
+    K_candidates: 30
+    gondola_keepout_deg: 35.0
+    objectives:
+    - count
+    - effort
+    - position_symmetry
+    - direction_symmetry
+    - geometric
+  propulsion:
+    arm_tube: 15x1 mm aluminium
+    motor: Kavan C3536
+    motor_time_constant_s: 0.1
+    propeller_in: 11
+    reverse_thrust: false
+    u_max_N: 12.0
+  tasks:
+    path_following_radius_m: 50.0
+  wind:
+    gust_amplitude_m_s:
+    - 1.0
+    - 3.0
+    gust_duration_s:
+    - 2.0
+    - 6.0
+    gust_rate_per_min: 0.0
+    mean_dir_deg: 0.0
+    mean_speed_m_s: 0.0
+    turbulence_sigma_m_s:
+    - 0.5
+    - 0.5
+    - 0.25
+    turbulence_tau_s: 2.0
+optimizer:
+  K_candidates: 30
+  feasibility:
+    min_force_N: 1.0
+    min_roll_pitch_Nm: 0.25
+    min_yaw_Nm: 1.0
+    n_sampled_directions: 50
+    required_dofs:
+    - Fx
+    - Fy
+    - Fz
+    - Mx
+    - My
+    - Mz
+    sample_seed: 0
+  geometry_rules:
+    ang_min_deg: 40.0
+    downwash_cone_deg: 15.0
+    gondola_keepout_deg: 35.0
+    prop_diameter_m: 0.1778
+    spacing_diameters: 2.5
+  hull_config: sphere
+  pso:
+    c_cog: 1.6
+    c_soc: 1.6
+    cond_threshold: 100.0
+    dof_weights:
+    - 2.0
+    - 2.0
+    - 0.3
+    - 0.3
+    - 0.3
+    - 2.0
+    iters: 80
+    max_props: 11
+    penalty_feasibility: 10000.0
+    swarm_size: 30
+    v_max_frac: 0.2
+    w_end: 0.4
+    w_start: 0.9
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  selection:
+    random_matched: 20
+    random_min: 15
+    random_seed_offset: 42
+  trials_per_seed: 20

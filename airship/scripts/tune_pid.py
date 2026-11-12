@@ -36,10 +36,11 @@ CHECK_SCENARIO = {"name": "turbulent_3ms", "duration_s": 60.0,
                   "wind_seed": 101, "init_pos": [0.0, 0.0, 0.0]}
 
 
-def layout_set(run_dir):
-    """The layouts flown in Phases 3-5: chosen optimized layouts, the minimum-N Pareto
-    layout, matched random layouts, and the reference layouts."""
-    run_dir = Path(run_dir)
+def layout_set(run_dir, capped_run=None):
+    """The layouts flown in Phases 3-5, as (label, path): chosen optimized layouts, the
+    minimum-N Pareto layout, matched random layouts, the reference layouts, and
+    optionally the knee of a capped-N run with its matched random layouts."""
+    run_dir = Path(run_dir).resolve()
     paths = [run_dir / "sphere_knee.json", run_dir / "sphere_paper_pick.json"]
     pareto = [load(p) for p in sorted(run_dir.glob("sphere_s*_t*.json"))]
     min_n = min(pareto, key=lambda L: (L.n_props, L.objectives.get("J2_effort", 0)))
@@ -47,32 +48,39 @@ def layout_set(run_dir):
     paths += sorted(run_dir.glob("sphere_random_N*_*.json"))
     paths += [ROOT / "results" / "layouts" / "sphere_paper_best.json",
               ROOT / "results" / "layouts" / "sphere_starlab_6thruster.json"]
-    return [p for p in paths if p.exists()]
+    out = [(p.stem, p) for p in paths if p.exists()]
+    if capped_run:
+        c = Path(capped_run).resolve()
+        tag = c.name.split("_")[1]                       # e.g. "maxN11"
+        knee = load(c / "sphere_knee.json")
+        out.append((f"{tag}_sphere_knee", c / "sphere_knee.json"))
+        out += [(f"{tag}_{p.stem}", p) for p in sorted(c.glob(f"sphere_random_N{knee.n_props}_*.json"))]
+    return out
 
 
 def work(args):
-    path, out_dir = args
+    label, path, out_dir = args
     cfg, pcfg = load_config("sphere"), load_config("pid")
     params = DynamicsParams.from_config(cfg)
     lay = load(path)
     tc = TuningConfig.from_config(pcfg["tuning"])
     t0 = time.time()
     gains, cost, hist = tune(lay, params, Scenario.from_config(pcfg["tuning_scenario"]), tc)
-    out = {"layout": lay.name, "path": str(Path(path).relative_to(ROOT)), "n_props": lay.n_props,
+    out = {"layout": label, "path": str(Path(path).resolve().relative_to(ROOT)), "n_props": lay.n_props,
            "source": lay.source, "gains": gains.as_dict(), "tuning_cost": cost, "history": hist,
            "minutes": (time.time() - t0) / 60}
     for key, sc in (("acceptance", pcfg["acceptance_scenario"]), ("turbulent", CHECK_SCENARIO)):
         r = run_episode(lay, params, make_pid(gains, params), Scenario.from_config(sc))
         out[key] = {k: v for k, v in r.items() if k != "log"}
-    json.dump(out, open(Path(out_dir) / "gains" / f"{lay.name}.json", "w"), indent=2)
-    print(f"{lay.name:28s} N={lay.n_props:2d} cost={cost:.3f} "
+    json.dump(out, open(Path(out_dir) / "gains" / f"{label}.json", "w"), indent=2)
+    print(f"{label:34s} N={lay.n_props:2d} cost={cost:.3f} "
           f"accept RMS={out['acceptance']['rms_pos_m']:.3f} m  turb RMS={out['turbulent']['rms_pos_m']:.3f} m  "
           f"({out['minutes']:.1f} min)", flush=True)
     return out
 
 
 def group(name):
-    if name.startswith("sphere_random_N"):
+    if "sphere_random_N" in name:
         return name.rsplit("_", 1)[0]
     return name
 
@@ -110,17 +118,18 @@ def report(out_dir, rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", help="phase-1 layout folder (results/layouts/phase1_...)")
+    ap.add_argument("--capped-run", help="optional capped-N layout folder (results/layouts/phase1_maxN.._...)")
     ap.add_argument("--layouts", nargs="*")
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
-    paths = [Path(p) for p in a.layouts] if a.layouts else layout_set(a.run)
+    items = [(Path(p).stem, Path(p)) for p in a.layouts] if a.layouts else layout_set(a.run, a.capped_run)
     out_dir = ROOT / "results" / "pid" / f"{datetime.now():%Y%m%d_%H%M%S}"
     (out_dir / "gains").mkdir(parents=True)
     yaml.safe_dump({"pid": load_config("pid"), "check_scenario": CHECK_SCENARIO,
-                    "layouts": [str(p) for p in paths]}, open(out_dir / "config.yaml", "w"))
-    print(f"tuning {len(paths)} layouts -> {out_dir}", flush=True)
+                    "layouts": {lab: str(p) for lab, p in items}}, open(out_dir / "config.yaml", "w"))
+    print(f"tuning {len(items)} layouts -> {out_dir}", flush=True)
     with Pool(a.workers) as pool:
-        rows = list(pool.imap(work, [(p, out_dir) for p in paths]))
+        rows = list(pool.imap(work, [(lab, p, out_dir) for lab, p in items]))
     with open(out_dir / "summary.csv", "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["layout", "n_props", "tuning_cost", "accept_rms_pos_m", "accept_effort_N2s",
