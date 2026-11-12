@@ -20,7 +20,7 @@ python -m pytest -q                              # all tests
 | 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done** |
 | 2 | 6-DOF sphere simulator | **done** |
 | 3 | Bounded allocation and PID baseline | **done** |
-| 4 | RL environment and training | — |
+| 4 | RL environment and training | **seed 0 trained; waiting for review** |
 | 5 | Experiments and paper outputs | — |
 
 ## Phase 0: what's here

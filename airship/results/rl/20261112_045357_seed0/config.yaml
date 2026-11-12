@@ -1,0 +1,289 @@
+n_envs: 4
+pool:
+  holdout: 21
+  holdout_names:
+  - phase1_maxN11_20261112_024218:sphere_s3_t00
+  - phase1_20261112_015323:sphere_random_N22_07
+  - phase1_20261112_015323:sphere_random_N22_14
+  - phase1_20261112_015323:sphere_random_N15_04
+  - phase1_20261112_015323:sphere_random_N22_04
+  - phase1_20261112_015323:sphere_random_N22_06
+  - phase1_20261112_015323:sphere_random_N22_01
+  - phase1_20261112_015323:sphere_random_N15_02
+  - phase1_20261112_015323:sphere_random_N15_03
+  - phase1_20261112_015323:sphere_random_N22_15
+  - phase1_20261112_015323:sphere_random_N15_18
+  - phase1_maxN11_20261112_024218:sphere_random_N9_05
+  - phase1_maxN11_20261112_024218:sphere_random_N9_18
+  - phase1_maxN11_20261112_024218:sphere_random_N11_05
+  - phase1_maxN11_20261112_024218:sphere_random_N11_14
+  - phase1_maxN11_20261112_024218:sphere_random_N11_16
+  - phase1_maxN11_20261112_024218:sphere_random_N11_07
+  - phase1_maxN11_20261112_024218:sphere_random_N9_06
+  - phase1_maxN11_20261112_024218:sphere_random_N11_19
+  - phase1_maxN11_20261112_024218:sphere_random_N11_08
+  - phase1_maxN11_20261112_024218:sphere_random_N9_13
+  train: 600
+  train_by_source:
+    failure: 150
+    hand: 3
+    optimizer: 88
+    perturbed: 299
+    random: 60
+seed: 0
+sphere:
+  air:
+    density_kg_m3: 1.225
+  dynamics:
+    control_hz: 10
+    disturbance_torque_sigma_Nm: 0.05
+    drag_coeff: 0.4
+    physics_hz: 100
+    rot_damping_lin:
+    - 2.0
+    - 2.0
+    - 2.0
+    rot_damping_quad:
+    - 5.0
+    - 5.0
+    - 5.0
+  hull:
+    ballast_bars_kg:
+    - 1.0
+    - 1.0
+    - 1.0
+    ballonet_volume_m3: 0.28
+    diameter_m: 3.15
+    shape: sphere
+    volume_m3: 16.4
+  mass:
+    added_inertia_kgm2:
+    - 0.0
+    - 0.0
+    - 0.0
+    added_mass_coeff: 0.5
+    components:
+      air_blower:
+        kg: 0.34
+        kind: point
+        z_m: -1.825
+      ballonet_air:
+        kg: 0.185
+        kind: point
+        z_m: -1.165
+      envelope_and_fittings:
+        kg: 6.485
+        kind: shell
+      gondola_electronics:
+        kg: 2.792
+        kind: point
+        z_m: -1.825
+      helium:
+        kg: 2.871
+        kind: solid_sphere
+      hull_escs:
+        kg: 0.13
+        kind: ring
+        ring_m: 1.575
+        z_m: 0.0
+      hull_motors_mounts:
+        kg: 2.08
+        kind: ring
+        ring_m: 1.575
+        z_m: 0.0
+      screws_washers:
+        kg: 0.165
+        kind: shell
+      top_payload:
+        kg: 1.062
+        kind: point
+        z_m: 1.575
+      valve_covers:
+        kg: 0.051
+        kind: point
+        z_m: -1.575
+    gondola_drop_m: 0.25
+    helium_in_inertia: true
+    trim:
+      kind: ring
+      mode: neutral
+      ring_m: 0.615
+      z_m: -1.45
+  operating_limits:
+    gust_max_m_s: 8.3
+    max_altitude_agl_m: 8.0
+    max_horizontal_radius_m: 20.0
+    sustained_wind_max_m_s: 5.6
+  optimizer:
+    K_candidates: 30
+    gondola_keepout_deg: 35.0
+    objectives:
+    - count
+    - effort
+    - position_symmetry
+    - direction_symmetry
+    - geometric
+  propulsion:
+    arm_tube: 15x1 mm aluminium
+    motor: Kavan C3536
+    motor_time_constant_s: 0.1
+    propeller_in: 11
+    reverse_thrust: false
+    u_max_N: 12.0
+  tasks:
+    path_following_radius_m: 50.0
+  wind:
+    gust_amplitude_m_s:
+    - 1.0
+    - 3.0
+    gust_duration_s:
+    - 2.0
+    - 6.0
+    gust_rate_per_min: 0.0
+    mean_dir_deg: 0.0
+    mean_speed_m_s: 0.0
+    turbulence_sigma_m_s:
+    - 0.5
+    - 0.5
+    - 0.25
+    turbulence_tau_s: 2.0
+total_steps: 5000000
+train_rl:
+  curriculum:
+  - advance_rms_m: 0.5
+    failures: false
+    layouts: knee
+    max_steps: 500000
+    name: calm_knee
+    randomize: false
+    wind: calm
+  - advance_rms_m: 0.6
+    failures: false
+    layouts: all
+    max_steps: 750000
+    name: calm_all
+    randomize: false
+    wind: calm
+  - advance_rms_m: 1.2
+    failures: false
+    layouts: all
+    max_steps: 1000000
+    name: steady_wind
+    randomize: false
+    wind: steady
+  - advance_rms_m: null
+    failures: true
+    layouts: all
+    name: full
+    randomize: true
+    wind: full
+  env:
+    action_filter_tau_s: 0.0
+    action_scale:
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    - 50.0
+    control_hz: 10
+    episode_s: 60.0
+    heading_change_deg: 90.0
+    init_offset_m: 2.0
+    init_yaw_deg: 20.0
+    integral_clip_m_s: 10.0
+    physics_hz: 100
+    pos_scale_m: 5.0
+    rate_scale_rad_s: 1.0
+    terminate_pos_m: 10.0
+    terminate_tilt_deg: 60.0
+    vel_scale_m_s: 2.0
+  layouts:
+    failure_variants: true
+    hand_designed_glob: sphere_hand_*.json
+    holdout_pareto: 1
+    holdout_random_frac: 0.25
+    include_references:
+    - sphere_paper_best
+    - sphere_starlab_6thruster
+    max_failure_variants: 150
+    pareto_runs:
+    - phase1_20261112_015323
+    - phase1_maxN11_20261112_024218
+    perturb_ang_sigma_deg: 2.0
+    perturb_pos_sigma_m: 0.02
+    perturbations_per_layout: 2
+    random_runs:
+    - phase1_20261112_015323
+    - phase1_maxN11_20261112_024218
+    split_seed: 0
+  ppo:
+    activation: tanh
+    batch_size: 1024
+    clip_range: 0.2
+    ent_coef: 0.0
+    gae_lambda: 0.95
+    gamma: 0.99
+    learning_rate: 0.0003
+    log_std_init: -1.0
+    n_envs: 4
+    n_epochs: 10
+    n_steps: 1024
+    net_arch:
+    - 256
+    - 256
+    seeds:
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    total_steps: 5000000
+    vec_env: subproc
+  randomization:
+    action_delay_prob: 0.3
+    added_mass_frac: 0.2
+    disturbance_torque_Nm: 0.05
+    drag_frac: 0.3
+    h_cg_frac: 0.3
+    mass_frac: 0.1
+    midflight_failure_prob: 0.2
+    motor_tau_s:
+    - 0.05
+    - 0.2
+    net_lift_kg: 0.3
+    sensor_noise:
+      att_rad: 0.01
+      pos_m: 0.05
+      rate_rad_s: 0.01
+      vel_m_s: 0.05
+  reward:
+    att_norm_rad: 0.2
+    pos_norm_m: 1.0
+    r_alive: 2.0
+    rate_norm_rad_s: 0.5
+    w_att: 0.3
+    w_da: 0.05
+    w_gap: 0.05
+    w_p: 1.0
+    w_u: 0.2
+    w_w: 0.05
+    w_yaw: 0.3
+    yaw_norm_rad: 0.5
+  wind:
+    gust_amplitude_m_s:
+    - 1.0
+    - 3.0
+    gust_duration_s:
+    - 2.0
+    - 6.0
+    gust_rate_per_min:
+    - 0.0
+    - 2.0
+    mean_speed_m_s:
+    - 0.0
+    - 4.0
+    turbulence_sigma_m_s:
+    - 0.0
+    - 0.5
+    turbulence_tau_s: 2.0

@@ -192,6 +192,59 @@ What this shows so far:
   roll at all (the pendulum keeps it level), and it uses a different kind of motor
   (reversible), so it is not a like-for-like comparison with push-only layouts.
 
+## Phase 4 results: RL training (seed 0)
+
+Run `results/rl/20261112_045357_seed0` (evaluation in its `eval/` folder).
+
+**Setup.** One PPO policy (2×256 tanh, Stable-Baselines3) for every layout: it outputs a
+wrench (±50 N, ±50 N·m) that goes through the same allocation as the PID. Trained
+5 million steps (59 minutes on 4 cores) on 600 layouts (88 Pareto, 60 random, 3
+hand-designed and reference layouts, 295 perturbed copies, 150 one-motor-failure
+variants); 21 layouts held out. Curriculum: calm air with the knee layout -> calm air,
+all layouts -> steady wind -> turbulence, gusts, mid-flight failures and randomised
+physics (reached at 434k steps; every stage passed its target).
+
+Two fixes were needed before it learned (first attempt is not reported as a result):
+the per-step penalties are now bounded so that surviving always pays more than crashing
+(otherwise the agent learned to end episodes early), and the initial exploration noise
+was reduced (random ±30 N pushes flung the airship out of the area).
+
+**Training curves** (`eval/training_curves.png`): learning plateaus after about 1 million
+steps in the final stage at about 1.1 m RMS and 88 % survival (over all training layouts,
+including random, perturbed and failed ones).
+
+**RL vs PID** (gusty station keeping: 3 m/s mean wind from 3 directions, turbulence,
+gusts, 45° heading change; identical wind seeds; median over directions, then over layouts):
+
+| Layout group | N | PID RMS | RL RMS | PID effort | RL effort | PID survival | RL survival |
+|---|---|---|---|---|---|---|---|
+| Optimized knee | 15 | **0.36 m** | 0.41 m | 13,180 | 25,048 | 1.00 | 1.00 |
+| Random (20) | 15 | 0.51 m | 0.84 m | 22,271 | 22,912 | 0.85 | 0.87 |
+| Optimized paper-rule pick | 22 | **0.29 m** | 0.50 m | 7,245 | 10,423 | 1.00 | 1.00 |
+| Random (20) | 22 | 0.36 m | 0.52 m | 10,528 | 16,389 | 1.00 | 1.00 |
+| Optimized capped | 9 | **1.02 m** | 3.51 m | 20,837 | 17,751 | 1.00 | 0.67 |
+| Random (20) | 9 | 4.69 m | 4.97 m | 15,437 | 17,232 | 0.32 | 0.30 |
+| Conference paper layout | 16 | 0.32 m | 0.41 m | 12,304 | 19,691 | 1.00 | 1.00 |
+| STARLab 6 thrusters (reversible) | 6 | 0.37 m | 0.62 m | 10,870 | 13,409 | 1.00 | 1.00 |
+
+**Brief acceptance: not met.** On held-in layouts the median RMS position error is
+0.49 m with PID and 0.81 m with RL; on held-out layouts 0.49 m (PID) and 1.50 m (RL).
+The RL policy is close to PID on the optimized layouts (0.41 vs 0.36 m on the knee)
+but uses more effort, and it generalises worse to layouts it has not seen.
+
+**The layout effect holds for both controllers.** With PID and with RL, the optimized
+layout beats the random median at the same N (N = 15: 0.36 vs 0.51 m with PID, 0.41 vs
+0.84 m with RL; N = 9: 1.02 vs 4.69 m with PID, and 8 in 10 random 9-prop layouts lose
+control).
+
+**Proposed next step (brief, section 8):** residual RL, where the policy adds a
+correction to the PID wrench (wrench = PID + scale · action). It starts from the PID's
+performance and only has to learn improvements, so it usually trains much faster.
+Then 5 training seeds for whichever version is used.
+
+Videos (`eval/`): PID vs RL on the knee layout in gusty wind; optimized vs random
+9-prop layouts flown by RL; a motor failing mid-flight (PID vs RL).
+
 ## Open questions
 
 **B. Maximum thrust per propeller.** No published thrust figure exists for the

@@ -15,3 +15,11 @@ results/runs/*/*
 !results/runs/*/seed*.pkl
 # PID tuning outputs are small text files: keep them
 !results/pid/
+# RL runs: keep the final model, normalisation stats, config, curriculum log and evaluation
+!results/rl/
+results/rl/*/*
+!results/rl/*/model.zip
+!results/rl/*/vecnormalize.pkl
+!results/rl/*/config.yaml
+!results/rl/*/curriculum.json
+!results/rl/*/eval/
