@@ -17,8 +17,8 @@ python -m pytest -q                              # all tests
 | Phase | What | Status |
 |---|---|---|
 | 0 | Physical-unit wrench matrix, layout JSON format, layout helpers | **done** |
-| 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done, waiting for review** |
-| 2 | 6-DOF sphere simulator | — |
+| 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done** |
+| 2 | 6-DOF sphere simulator | **done** |
 | 3 | Bounded allocation and PID baseline | — |
 | 4 | RL environment and training | — |
 | 5 | Experiments and paper outputs | — |
@@ -88,5 +88,20 @@ python scripts/run_optimizer.py --summarize results/runs/phase1_<timestamp>
 
 Layout files also carry `u_min_N` (0 = push-only, negative = reversible) and
 `allow_off_hull` (motors on arms or on the gondola).
+
+## Phase 2: what's here
+
+| File | Purpose |
+|---|---|
+| `airship/massprops.py` | mass, CG and inertia from the mass budget in `configs/sphere.yaml` (neutral-buoyancy trim added automatically) |
+| `airship/wind.py` | mean wind + Ornstein-Uhlenbeck turbulence + 1-cosine gusts, all from one seed |
+| `airship/dynamics.py` | 6-DOF Fossen-style model (added mass, Coriolis, drag, buoyancy vs weight at the CG, motor lag), RK4 at 100 Hz, numba-compiled; `Simulator` steps at 10 Hz |
+| `tests/test_dynamics.py` | the brief's five sanity checks, motor lag, wind statistics and speed |
+| `scripts/demo_simulator.py` | figure: pendulum release and zero-thrust drift in gusty wind |
+
+```bash
+pip install numba
+python scripts/demo_simulator.py          # results/figures/phase2_demo.png
+```
 
 Open questions and assumptions are tracked in `results/REPORT.md`.
