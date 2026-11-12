@@ -1,0 +1,91 @@
+hull:
+  air:
+    density_kg_m3: 1.225
+  hull:
+    ballast_bars_kg:
+    - 1.0
+    - 1.0
+    - 1.0
+    ballonet_volume_m3: 0.28
+    diameter_m: 3.15
+    shape: sphere
+    volume_m3: 16.4
+  mass:
+    cg_below_cb_m: 0.3
+    gross_lift_kg: 20.0
+    helium_density_kg_m3: 0.169
+    operating_mass_kg: 16.0
+    trim: neutral
+  operating_limits:
+    gust_max_m_s: 8.3
+    max_altitude_agl_m: 8.0
+    max_horizontal_radius_m: 20.0
+    sustained_wind_max_m_s: 5.6
+  optimizer:
+    K_candidates: 30
+    gondola_keepout_deg: 35.0
+    objectives:
+    - count
+    - effort
+    - position_symmetry
+    - direction_symmetry
+    - geometric
+  propulsion:
+    arm_tube: 15x1 mm aluminium
+    motor: Kavan C3536-1250kv
+    motor_time_constant_s: 0.1
+    propeller_in: 11
+    reverse_thrust: false
+    u_max_N: 12.0
+  tasks:
+    path_following_radius_m: 50.0
+optimizer:
+  K_candidates: 30
+  feasibility:
+    min_force_N: 1.0
+    min_roll_pitch_Nm: 0.25
+    min_yaw_Nm: 1.0
+    n_sampled_directions: 50
+    required_dofs:
+    - Fx
+    - Fy
+    - Fz
+    - Mx
+    - My
+    - Mz
+    sample_seed: 0
+  geometry_rules:
+    ang_min_deg: 40.0
+    downwash_cone_deg: 15.0
+    gondola_keepout_deg: 35.0
+    prop_diameter_m: 0.1778
+    spacing_diameters: 2.5
+  hull_config: sphere
+  pso:
+    c_cog: 1.6
+    c_soc: 1.6
+    cond_threshold: 100.0
+    dof_weights:
+    - 2.0
+    - 2.0
+    - 0.3
+    - 0.3
+    - 0.3
+    - 2.0
+    iters: 80
+    penalty_feasibility: 10000.0
+    swarm_size: 30
+    v_max_frac: 0.2
+    w_end: 0.4
+    w_start: 0.9
+  seeds:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  selection:
+    random_matched: 20
+    random_min: 15
+    random_seed_offset: 42
+  trials_per_seed: 20

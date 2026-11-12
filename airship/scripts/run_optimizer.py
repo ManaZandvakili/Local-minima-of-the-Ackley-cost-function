@@ -148,10 +148,13 @@ def summarize(run_dir, opt):
         save(out, lay_dir / f"{label}.json")
         chosen[label] = out
 
-    # matched-N random layouts for the paper-rule pick
+    # matched-N random layouts for each chosen layout
     rand_info = {}
-    if g_pick is not None:
-        n = g_pick[4].n_props
+    for label, lay in chosen.items():
+        n = lay.n_props
+        if n in rand_info:
+            rand_info[n]["matched_to"].append(label)
+            continue
         samples, attempts = matched(n)
         rcaps = []
         for i, (p, d) in enumerate(samples):
@@ -159,10 +162,10 @@ def summarize(run_dir, opt):
             rcaps.append(fr.capacity_min_N)
             save(make_layout(f"sphere_random_N{n}_{i:02d}", p, d, s, "random", None,
                              sel["random_seed_offset"] + n,
-                             {"run": run_dir.name, "matched_to": "sphere_paper_pick", "feasibility": fr.as_dict()}),
+                             {"run": run_dir.name, "matched_to": label, "feasibility": fr.as_dict()}),
                  lay_dir / f"sphere_random_N{n}_{i:02d}.json")
-        rand_info = {"N": n, "count": len(samples), "attempts": attempts,
-                     "capacity_min_N_median": float(np.median(rcaps)) if rcaps else None}
+        rand_info[n] = {"N": n, "matched_to": [label], "count": len(samples), "attempts": attempts,
+                        "capacity_min_N_median": float(np.median(rcaps)) if rcaps else None}
 
     with open(run_dir / "summary.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(csv_rows[0]))
@@ -176,7 +179,7 @@ def summarize(run_dir, opt):
 
     report = write_report(run_dir, opt, s, per_seed, csv_rows, chosen, rand_info, refs)
     (run_dir / "report.md").write_text(report)
-    json.dump({"per_seed": per_seed, "random": rand_info}, open(run_dir / "summary.json", "w"), indent=2)
+    json.dump({"per_seed": per_seed, "random": list(rand_info.values())}, open(run_dir / "summary.json", "w"), indent=2)
     print(report)
 
 
@@ -207,10 +210,10 @@ def write_report(run_dir, opt, s, per_seed, rows, chosen, rand_info, refs):
         L.append(f"- **{k}**: N = {lay.n_props} (= {lay.notes['same_as']}), capacity min "
                  f"{fr['capacity_min_N']:.2f} N, objectives "
                  + ", ".join(f"{kk} {v:.3f}" for kk, v in lay.objectives.items()))
-    if rand_info:
-        L.append(f"\nMatched random layouts: {rand_info['count']} with N = {rand_info['N']} "
-                 f"({rand_info['attempts']} attempts), median capacity min "
-                 f"{rand_info['capacity_min_N_median']:.2f} N.\n")
+    for r in rand_info.values():
+        L.append(f"\nMatched random layouts for {', '.join(r['matched_to'])}: {r['count']} with N = {r['N']} "
+                 f"({r['attempts']} attempts), median capacity min {r['capacity_min_N_median']:.2f} N.")
+    L.append("")
     L.append("## Reference layouts under the new test\n")
     L.append("| Layout | N | Thrust range [N] | Feasible (all 6 DOF) | Capacity min [N] | Axes with zero capacity |")
     L.append("|---|---|---|---|---|---|")

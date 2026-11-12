@@ -32,7 +32,7 @@ python -m pytest -q                              # all tests
 | `airship/layouts.py` | `Layout` + JSON `load` / `save`, `remove_prop` (motor failure), `perturb` (manufacturing tolerance) |
 | `airship/config.py` | loads `configs/*.yaml` |
 | `configs/sphere.yaml` | hull, mass, propulsion, operating limits; each value tagged confirmed / derived / assumption with its source |
-| `scripts/export_reference_layouts.py` | writes the paper's best layouts and the current STARLab 4-motor layout to `results/layouts/` |
+| `scripts/export_reference_layouts.py` | writes the paper's best layouts and the STARLab 6-thruster set to `results/layouts/` |
 | `tests/` | geometry, wrench and layout tests, including the Phase 0 acceptance test against `reference/Final.py` |
 
 Export the reference layouts:

@@ -4,3 +4,11 @@ results/*
 !results/REPORT.md
 __pycache__/
 .pytest_cache/
+# keep each run's small text outputs (config, summary, report, per-seed trial results)
+!results/runs/
+results/runs/*/*
+!results/runs/*/config.yaml
+!results/runs/*/summary.csv
+!results/runs/*/summary.json
+!results/runs/*/report.md
+!results/runs/*/seed*.pkl

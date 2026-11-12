@@ -2,95 +2,129 @@
 
 Plain-language log of results, decisions, assumptions and open questions.
 
-## Decisions from Mana (Section 11)
+## Decisions from Mana
 
 | # | Question | Answer |
 |---|---|---|
 | 1 | Hull size | 3.15 m diameter |
-| 2 | Mass | from the SFOC application: final operating mass 16 kg, gross lift 20 kg (see open question A) |
+| 2 | Mass | mass budget: 16.16 kg with helium (13.29 kg without), about 3.9 kg of spare lift trimmed with lead bars and the ballonet; modelled as neutrally buoyant, about 20 kg in total |
 | 3 | Objective set | the paper's five: count, effort, position symmetry, direction symmetry, geometric |
 | 4 | Path-following radius | 50 m |
-| 5 | Thrust | from the Aero Drum quotation: 4 x Kavan C3536-1250kv, 11-inch props, 50 A ESCs. No published thrust figure, so **12 N per motor is estimated** (open question B) |
-| 6 | STARLab 4-motor layout | include as a reference (exported; see open question C) |
+| 5 | Thrust | hull motors: Kavan C3536 (1250 kV in the quotation, 1000 kV in the mass budget), 11-inch props, 4S battery. No published thrust figure: **12 N per motor estimated** |
+| 6 | STARLab reference layout | six reversible thrusters: forward pair and side pair on the hull, lift pair on the gondola |
 | 7 | Compute for RL | the cloud, for now |
 
 Base code: `Final.py` (the paper version), frozen in `reference/`.
 
 ## Phase 0 results
 
-- New package `airship/` with geometry, wrench matrix and layouts in physical units.
+- New package `airship/`: geometry, wrench matrix and layouts in physical units.
 - **Acceptance test passes:** the wrench matrix built from metres equals Final.py's
-  (normalised positions, torque rows × 1.575 m) to within 1e-12, for the sphere,
-  cigar and oblate. 26 tests pass.
-- Reference layouts exported to `results/layouts/`:
+  (normalised positions, torque rows × 1.575 m) to within 1e-12, for all three hulls.
+- Reference layouts in `results/layouts/`: the paper's best sphere (16), cigar (13)
+  and oblate (16) layouts, and the STARLab 6-thruster set.
 
-| Layout | N | rank of M | Count | Effort | Pos. sym. | Dir. sym. | Geometric |
-|---|---|---|---|---|---|---|---|
-| sphere_paper_best | 16 | 6 | 1.067 | 1.207 | 0.119 | 0.029 | 0.000 |
-| cigar_paper_best | 13 | 6 | 0.867 | 1.393 | 0.407 | 0.046 | 0.124 |
-| oblate_paper_best | 16 | 6 | 1.067 | 1.097 | 0.050 | 0.000 | 2.633 |
-| sphere_starlab_4prop | 4 | 3 | — | — | — | — | — |
+## Phase 1 results (run `phase1_20261112_015323`)
 
-Objective values are in Final.py's normalised units, so they match the paper.
-Whether each layout can really fly with push-only propellers is checked in Phase 1.
+Full report: `results/runs/phase1_20261112_015323/report.md`.
+Layouts: `results/layouts/phase1_20261112_015323/` (61 Pareto layouts, the two
+chosen layouts, 40 matched random layouts).
 
-## Open questions for Mana
+**What changed in the optimizer.** The rank-6 test is replaced by a push-only
+capacity test: for each of the 12 directions (±Fx, ±Fy, ±Fz, ±roll, ±pitch, ±yaw),
+the largest force or moment the layout can produce with every propeller between
+0 and 12 N. A layout is accepted only if it reaches at least 1 N (forces), 1 N·m
+(yaw) and 0.25 N·m (roll, pitch) in every direction. The "force 6 propellers"
+fallback is removed, the random SVD noise is removed, and every random number
+comes from a seed. The five objectives are unchanged and give exactly the same
+values as Final.py (tested).
 
-**A. Weight vs buoyancy.** The SFOC application lists a final operating mass of
-16 kg and a gross lift of 20 kg. The 20 kg equals the mass of air the hull
-displaces (1.225 kg/m³ × 16.4 m³ = 20.1 kg). The hull holds about 2.8 kg of helium.
-- If the 16 kg *excludes* helium, the airship weighs about 18.8 kg against 20.1 kg of
-  buoyancy, i.e. about 1.3 kg of net lift (it pulls up on its tethers).
-- If it *includes* helium, the net lift is about 4 kg.
-- Arctic air at −15 °C is denser (≈ 1.37 kg/m³), raising buoyancy to about 22.4 kg.
+**Runs.** 5 seeds × 20 PSO trials, about 9-10 minutes per seed.
+- 96 of 100 trials found a feasible layout. The other 4 never found a layout that
+  passes the gondola keep-out rules (an all-or-nothing rejection inherited from Final.py).
+- Every feasible layout has at least 7 propellers, as push-only control requires.
 
-The simulator (Phase 2) models free flight, so for now it will assume the airship is
-**trimmed to neutral buoyancy** (ballonet and ballast). Please confirm, or say if
-you want net lift and a tether modelled. The section "3.2 Configuration
-discrepancies" in the SFOC is still empty, and one line says "net positive
-buoyancy 20 kg", which contradicts the other values.
+| Seed | Feasible trials | Pareto layouts | Knee N | Paper-rule pick N |
+|---|---|---|---|---|
+| 0 | 20/20 | 9 | 15 | 20 |
+| 1 | 17/20 | 9 | 15 | 19 |
+| 2 | 20/20 | 14 | 12 | 19 |
+| 3 | 20/20 | 14 | 16 | 21 |
+| 4 | 19/20 | 13 | 15 | 22 |
 
-**B. Maximum thrust per propeller.** The Aero Drum quotation specifies 4 x Kavan
-C3536-1250kv motors, Kavan 50 A ESCs and 11-inch propellers. Kavan publishes no
-static thrust for this motor: it is rated 420 W maximum (30 s, 4S), with an 11x5
-propeller recommended on 3S. Motors of this class with an 11-inch propeller give
-roughly 1.2-1.3 kg (12-13 N) at full throttle, so **12 N is used, as an estimate**.
-That is about 5 times the 2.5 N in Final.py (a 7-inch propeller). A thrust-stand
-measurement would settle it. On 4S with an 11-inch propeller the motor would be
-past its rating, so the battery voltage matters too (the SFOC lists 4S Li-ion in
-one place and 6S LiPo in another).
+Spread across seeds: the knee point lands at 12-16 propellers (15 in three of five
+seeds). Pareto layouts range from 7 to 23 propellers (median 13), because each
+trial weights the five objectives differently.
 
-Effect: in Phase 1 the maximum thrust only scales the capacity numbers (which
-layouts pass does not change). From Phase 2 on it matters a lot: with 12 N per
-propeller there is far more authority against wind than with 2.5 N.
+**Chosen layouts (over all seeds):**
 
-**C. STARLab 4-motor layout.** The drawings show four motors on the equator at 90°
-spacing, each pushing horizontally along the hull. Assumed: all four push
-counter-clockwise seen from above, motors placed on the hull surface (arms ignored).
-- With push-only propellers this layout can only yaw one way, and cannot produce a
-  pure push in any direction (every push also yaws it). Checked with a small LP:
-  maximum +Mz 75.6 N·m (with 12 N motors), but 0 for −Mz, +Fx and −Fx.
-- With reversible ESCs it can control Fx, Fy and yaw, but never Fz, roll or pitch.
+| Layout | N | Effort | Pos. sym. | Dir. sym. | Geometric | Capacity min |
+|---|---|---|---|---|---|---|
+| sphere_knee (best compromise) | 15 | 1.096 | 0.102 | 0.056 | 0.818 | 6.2 N |
+| sphere_paper_pick (paper's rule: highest planar authority) | 22 | 0.760 | 0.106 | 0.075 | 4.787 | 19.7 N |
+| sphere_paper_best (conference paper, for comparison) | 16 | 1.207 | 0.119 | 0.029 | 0.000 | 10.0 N |
 
-The project page describes the flight software differently: "four thrusters: two
-side thrusters for sideways movement and turning, a forward pair, and a lift pair".
-That adds up to six, not four, and a "lift pair" would mean some motors push
-vertically, unlike the SFOC drawing. The firmware is built on ArduSub, which
-normally assumes reversible thrusters, while the quoted Kavan 50 A ESCs are
-ordinary one-direction airplane ESCs unless reconfigured.
+**Against matched random layouts** (20 each, same N, all passing the same tests):
+- The knee layout (N = 15) beats **all 20** random layouts on effort (1.10 vs a
+  median of 2.11), direction symmetry, geometric suitability and authority, and
+  18 of 20 on position symmetry.
+- Its worst-direction capacity (6.2 N) is about the same as the random median
+  (6.1 N). Capacity is a constraint here, not an objective, so the optimizer only
+  makes sure it is high enough; it does not maximise it.
+- The paper-rule pick (N = 22) beats all 20 of its random layouts on effort,
+  direction symmetry, geometric suitability and authority.
 
-Please confirm, for each of the 4 motors: where it sits, which way it pushes, and
-whether its ESC can reverse.
+**Reference layouts under the new test:**
 
-**D. Mass budget.** Still needed: gondola mass and how far the centre of gravity
-sits below the hull centre (assumed 0.30 m); both set the pendulum stability in
-Phase 2. The project page links a mass budget, but that page is blocked from this
-cloud session; pasting its numbers here is enough. Known so far: ballonet
-0.28 m³, 3 x 1 kg lead balance bars plus 6 balance pockets (Aero Drum quotation).
+| Layout | Feasible (all 6 DOF) | Capacity min | Missing directions |
+|---|---|---|---|
+| sphere_paper_best (16) | yes | 10.0 N | none |
+| cigar_paper_best (13) | yes | 15.4 N | none |
+| oblate_paper_best (16) | yes | 24.6 N | none |
+| sphere_starlab_6thruster (reversible) | no | 0 | roll (±Mx) |
 
-**E. Wind range for training (proposal).** The brief suggests 0–4 m/s. The SFOC
-operating limits are 5.6 m/s sustained and 8.3 m/s gusts, so the proposal is to
-train on mean wind 0–5.6 m/s with gusts up to 8.3 m/s.
+So the conference-paper layouts still hold up with push-only propellers. The
+current STARLab thruster set cannot control roll at all (expected: no thruster
+produces a roll moment; the gondola pendulum is what keeps it level).
+
+### Decisions needed before Phase 2
+
+1. **Which optimized layout to use as "the" optimized layout.** The paper's rule
+   (highest planar authority) now picks the layout with the most propellers (22),
+   because authority grows with the number of propellers. **Recommendation: use the
+   knee layout (15 propellers)** as the main optimized layout, and keep the 22-prop
+   pick and the minimum-N Pareto layout (7 props) as extra comparison points.
+2. **Spacing rule.** The geometric objective still uses the paper's 7-inch
+   propeller for the spacing rule (2.5 diameters = 0.44 m). The real propellers are
+   11-inch (0.70 m). Kept as in the paper for now; switching to 11-inch would make
+   the optimizer keep propellers further apart.
+3. **The 4 rejected trials.** Making the gondola rejection graded (still never
+   accepted, but with a gradient towards passing) would let those trials recover.
+   It changes the search slightly compared with the paper.
+
+## Open questions
+
+**B. Maximum thrust per propeller.** No published thrust figure exists for the
+Kavan C3536 motors. Motors of this class with an 11-inch propeller give roughly
+12-13 N at full throttle, so 12 N is used. The quotation lists 1250 kV, the mass
+budget 1000 kV; with the 4S battery, 1000 kV is the better match for an 11-inch
+propeller. A thrust-stand measurement would settle it. In Phase 1 the value only
+scales the capacity numbers; from Phase 2 on it matters a lot.
+
+**C. STARLab thrusters.** Modelled as: forward pair at ±y on the equator pushing
+along x, side pair at ±x pushing along y, lift pair on the gondola (0.25 m below
+the hull, ±0.25 m along x) pushing along z, all reversible. Gondola motor thrust is
+unknown and guessed at 6 N (107 g motor and propeller). Positions of the gondola
+motors and which way is "forward" are assumptions.
+
+**D. Centre of gravity.** The gondola and electronics weigh 2.79 kg and hang below
+the hull; with the lead bars this sets how far the centre of gravity sits below the
+hull centre (the pendulum stability). Phase 2 will compute it from the mass budget;
+please check the gondola's hanging distance.
+
+**E. Wind range for training (proposal).** The SFOC operating limits are 5.6 m/s
+sustained and 8.3 m/s gusts, so the proposal is to train on mean wind 0-5.6 m/s with
+gusts up to 8.3 m/s (the brief suggested 0-4 m/s).
 
 **F. Path radius vs operating area.** The 50 m path keeps the comparison with the
 paper, but the SFOC limits outdoor tests to a 20 m radius, so it can only be done
@@ -98,10 +132,11 @@ in simulation. Station keeping, the primary task, fits inside the limits.
 
 ## Assumptions in use
 
-All values are tagged in `configs/sphere.yaml`. Current assumptions: air density
-1.225 kg/m³, neutral-buoyancy trim, CG 0.30 m below the hull centre,
-maximum thrust (12 N, estimated), 0.10 s motor time constant, and the STARLab
-motor push directions.
+All values are tagged in `configs/sphere.yaml` and `configs/optimizer.yaml`:
+air density 1.225 kg/m³, neutral-buoyancy trim, 12 N hull-motor thrust (estimated),
+6 N gondola-motor thrust (guess), 0.10 s motor time constant, capacity minima
+(1 N, 1 N·m yaw, 0.25 N·m roll/pitch), the 7-inch spacing rule, and the STARLab
+thruster geometry above.
 
 Sources: SFOC application (Oct 2026 draft), Aero Drum official quotation (Aug 2025),
-ACCESS project page text, Kavan C3536-1250 product listings.
+ACCESS project page and mass budget, Kavan C3536 product listings.

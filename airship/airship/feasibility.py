@@ -146,5 +146,5 @@ def assess(M, u_min, u_max, req, length_m, n_sampled=50, seed=0):
         dirs[:, req_idx] = sample_directions(n_sampled, seed)[:, :len(req_idx)]
         dirs /= np.linalg.norm(dirs, axis=1, keepdims=True)
         worst.append(min(capacity(Ms, e, u_min, u_max) for e in dirs))
-    cap_min = float(min(worst)) if worst else float("nan")
+    cap_min = max(float(min(worst)), 0.0) + 0.0 if worst else float("nan")   # + 0.0 turns -0.0 into 0.0
     return FeasibilityReport(sf == 0.0 and cap_min > 0.0, caps, cap_min, sf)
