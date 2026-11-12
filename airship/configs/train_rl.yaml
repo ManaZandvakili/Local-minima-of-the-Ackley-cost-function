@@ -3,9 +3,11 @@ env:
   episode_s: 60.0
   control_hz: 10
   physics_hz: 100
-  action_scale: [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]   # N, N, N, N*m, N*m, N*m per unit action.
-                                                     # Brief default 6; raised because the wind drag
-                                                     # alone is ~17 N at 3 m/s and capacities are 10-40.
+  action_scale: [50.0, 50.0, 50.0, 50.0, 50.0, 50.0]   # N, N, N, N*m, N*m, N*m per unit action.
+                                                     # Brief default 6; raised because the hull drag alone
+                                                     # is ~17 N at 3 m/s and ~30 N at 4 m/s, and layout
+                                                     # capacities reach 40-90; the PID's wrench is limited
+                                                     # only by the allocation, so RL gets similar authority.
   action_filter_tau_s: 0.0       # optional first-order low-pass on the action (0 = off)
   pos_scale_m: 5.0               # observation normalisation
   vel_scale_m_s: 2.0
@@ -66,9 +68,10 @@ layouts:
   split_seed: 0
 
 curriculum:                      # advance when the mean episode RMS position error is below the threshold
-  - {name: calm_knee,   layouts: knee, wind: calm,   randomize: false, failures: false, advance_rms_m: 0.5}
-  - {name: calm_all,    layouts: all,  wind: calm,   randomize: false, failures: false, advance_rms_m: 0.6}
-  - {name: steady_wind, layouts: all,  wind: steady, randomize: false, failures: false, advance_rms_m: 0.8}
+                                 # (and survival > 95 %), or after max_steps in the stage
+  - {name: calm_knee,   layouts: knee, wind: calm,   randomize: false, failures: false, advance_rms_m: 0.5, max_steps: 500000}
+  - {name: calm_all,    layouts: all,  wind: calm,   randomize: false, failures: false, advance_rms_m: 0.6, max_steps: 750000}
+  - {name: steady_wind, layouts: all,  wind: steady, randomize: false, failures: false, advance_rms_m: 1.2, max_steps: 1000000}
   - {name: full,        layouts: all,  wind: full,   randomize: true,  failures: true,  advance_rms_m: null}
 
 ppo:

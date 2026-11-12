@@ -78,13 +78,16 @@ class CurriculumAndTerms(BaseCallback):
         st = self.stages[self.i]
         thr = st.get("advance_rms_m")
         self.log.append({"steps": self.num_timesteps, "stage": st["name"], "rms_pos_m": rms, "survival": surv})
-        if (thr is not None and self.i < len(self.stages) - 1 and len(m) >= self.window
-                and self.num_timesteps - self.stage_start >= self.min_steps and rms < thr and surv > 0.95):
+        in_stage = self.num_timesteps - self.stage_start
+        good = (thr is not None and len(m) >= self.window and in_stage >= self.min_steps and rms < thr and surv > 0.95)
+        timed_out = st.get("max_steps") is not None and in_stage >= st["max_steps"]
+        if self.i < len(self.stages) - 1 and (good or timed_out):
             self.i += 1
             self.stage_start = self.num_timesteps
             self.metrics.clear(); self.terms.clear()
             self.training_env.env_method("set_stage", self.stages[self.i])
-            print(f"[curriculum] step {self.num_timesteps}: -> stage {self.i} {self.stages[self.i]['name']}", flush=True)
+            print(f"[curriculum] step {self.num_timesteps}: -> stage {self.i} {self.stages[self.i]['name']}"
+                  f" ({'threshold met' if good else 'step limit'})", flush=True)
         json.dump({"stage": self.i, "log": self.log}, open(self.out_dir / "curriculum.json", "w"), indent=1)
 
 
