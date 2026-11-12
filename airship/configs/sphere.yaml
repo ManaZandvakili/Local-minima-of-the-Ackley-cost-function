@@ -1,0 +1,46 @@
+# Spherical ACCESS airship. Every value says where it comes from:
+#   confirmed  - confirmed by Mana or stated in an official ACCESS document
+#   derived    - computed from confirmed values
+#   assumption - default chosen by Claude; needs confirming before results are final
+#
+# Sources:
+#   SFOC   = ACCESS_SFOC_Application_Tethered_Airship_Oct_2026 (Transport Canada application)
+#   Final  = reference/Final.py (conference-paper code)
+#   paper  = OPTIMIZATION_ZANDVAKILI.docx
+
+hull:
+  shape: sphere
+  diameter_m: 3.15            # confirmed (Mana; SFOC sec. 3; drawing DWG 2)
+  volume_m3: 16.4             # derived: 4/3*pi*r^3 = 16.37 m^3 (SFOC: "approximately 16.4")
+
+air:
+  density_kg_m3: 1.225        # assumption: ISA sea level, 15 C (Arctic -15 C air is ~1.37)
+
+mass:
+  # SFOC sec. 3 lists: gross-lift design value 20 kg, final operating mass 16 kg.
+  # 20 kg matches the displaced-air mass (1.225 * 16.4 = 20.1 kg), i.e. the buoyancy.
+  operating_mass_kg: 16.0     # confirmed (SFOC); unclear whether it includes ~2.8 kg of helium
+  gross_lift_kg: 20.0         # confirmed (SFOC; drawing DWG 2)
+  helium_density_kg_m3: 0.169 # derived: helium at 15 C, 1 atm
+  # How the simulator should balance weight and buoyancy is an open question (see results/REPORT.md).
+  trim: neutral               # assumption: ballonet/ballast trim to neutral buoyancy for free-flight station keeping
+  cg_below_cb_m: 0.30         # assumption (not in SFOC)
+
+propulsion:
+  u_max_N: 2.5                # assumption: from Final ("Kavan 7-inch"); SFOC gives no motor/thrust data
+  reverse_thrust: false       # confirmed (brief) for the optimizer; see REPORT.md about the 4-motor STARLab layout
+  motor_time_constant_s: 0.10 # assumption
+
+operating_limits:             # confirmed (SFOC sec. 7 / Appendix A)
+  sustained_wind_max_m_s: 5.6
+  gust_max_m_s: 8.3
+  max_altitude_agl_m: 8.0
+  max_horizontal_radius_m: 20.0
+
+tasks:
+  path_following_radius_m: 50.0   # confirmed (Mana; paper)
+
+optimizer:
+  objectives: [count, effort, position_symmetry, direction_symmetry, geometric]   # confirmed: the paper's five
+  K_candidates: 30                # confirmed (paper)
+  gondola_keepout_deg: 35.0       # confirmed (paper)

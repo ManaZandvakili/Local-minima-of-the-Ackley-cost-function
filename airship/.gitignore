@@ -1,0 +1,6 @@
+# large run outputs stay local; layouts and the report are tracked
+results/*
+!results/layouts/
+!results/REPORT.md
+__pycache__/
+.pytest_cache/
