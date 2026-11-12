@@ -13,3 +13,5 @@ results/runs/*/*
 !results/runs/*/summary.json
 !results/runs/*/report.md
 !results/runs/*/seed*.pkl
+# PID tuning outputs are small text files: keep them
+!results/pid/

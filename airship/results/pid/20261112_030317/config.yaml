@@ -1,0 +1,176 @@
+check_scenario:
+  duration_s: 60.0
+  init_pos:
+  - 0.0
+  - 0.0
+  - 0.0
+  name: turbulent_3ms
+  wind:
+    gust_rate_per_min: 2.0
+    mean_dir_deg: 120.0
+    mean_speed_m_s: 3.0
+    turbulence_sigma_m_s:
+    - 0.5
+    - 0.5
+    - 0.25
+  wind_seed: 101
+layouts:
+  maxN11_sphere_knee: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_knee.json
+  maxN11_sphere_random_N9_00: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_00.json
+  maxN11_sphere_random_N9_01: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_01.json
+  maxN11_sphere_random_N9_02: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_02.json
+  maxN11_sphere_random_N9_03: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_03.json
+  maxN11_sphere_random_N9_04: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_04.json
+  maxN11_sphere_random_N9_05: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_05.json
+  maxN11_sphere_random_N9_06: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_06.json
+  maxN11_sphere_random_N9_07: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_07.json
+  maxN11_sphere_random_N9_08: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_08.json
+  maxN11_sphere_random_N9_09: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_09.json
+  maxN11_sphere_random_N9_10: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_10.json
+  maxN11_sphere_random_N9_11: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_11.json
+  maxN11_sphere_random_N9_12: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_12.json
+  maxN11_sphere_random_N9_13: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_13.json
+  maxN11_sphere_random_N9_14: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_14.json
+  maxN11_sphere_random_N9_15: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_15.json
+  maxN11_sphere_random_N9_16: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_16.json
+  maxN11_sphere_random_N9_17: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_17.json
+  maxN11_sphere_random_N9_18: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_18.json
+  maxN11_sphere_random_N9_19: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_maxN11_20261112_024218/sphere_random_N9_19.json
+  sphere_knee: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_knee.json
+  sphere_paper_best: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/sphere_paper_best.json
+  sphere_paper_pick: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_paper_pick.json
+  sphere_random_N15_00: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_00.json
+  sphere_random_N15_01: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_01.json
+  sphere_random_N15_02: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_02.json
+  sphere_random_N15_03: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_03.json
+  sphere_random_N15_04: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_04.json
+  sphere_random_N15_05: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_05.json
+  sphere_random_N15_06: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_06.json
+  sphere_random_N15_07: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_07.json
+  sphere_random_N15_08: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_08.json
+  sphere_random_N15_09: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_09.json
+  sphere_random_N15_10: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_10.json
+  sphere_random_N15_11: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_11.json
+  sphere_random_N15_12: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_12.json
+  sphere_random_N15_13: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_13.json
+  sphere_random_N15_14: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_14.json
+  sphere_random_N15_15: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_15.json
+  sphere_random_N15_16: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_16.json
+  sphere_random_N15_17: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_17.json
+  sphere_random_N15_18: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_18.json
+  sphere_random_N15_19: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N15_19.json
+  sphere_random_N22_00: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_00.json
+  sphere_random_N22_01: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_01.json
+  sphere_random_N22_02: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_02.json
+  sphere_random_N22_03: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_03.json
+  sphere_random_N22_04: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_04.json
+  sphere_random_N22_05: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_05.json
+  sphere_random_N22_06: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_06.json
+  sphere_random_N22_07: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_07.json
+  sphere_random_N22_08: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_08.json
+  sphere_random_N22_09: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_09.json
+  sphere_random_N22_10: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_10.json
+  sphere_random_N22_11: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_11.json
+  sphere_random_N22_12: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_12.json
+  sphere_random_N22_13: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_13.json
+  sphere_random_N22_14: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_14.json
+  sphere_random_N22_15: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_15.json
+  sphere_random_N22_16: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_16.json
+  sphere_random_N22_17: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_17.json
+  sphere_random_N22_18: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_18.json
+  sphere_random_N22_19: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_random_N22_19.json
+  sphere_s0_t12: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/phase1_20261112_015323/sphere_s0_t12.json
+  sphere_starlab_6thruster: /home/user/Local-minima-of-the-Ackley-cost-function/airship/results/layouts/sphere_starlab_6thruster.json
+pid:
+  acceptance_scenario:
+    duration_s: 60.0
+    name: acceptance_2ms
+    wind:
+      mean_dir_deg: 0.0
+      mean_speed_m_s: 2.0
+      turbulence_sigma_m_s:
+      - 0.0
+      - 0.0
+      - 0.0
+    wind_seed: 1
+  allocation:
+    W:
+    - 2.0
+    - 2.0
+    - 1.0
+    - 0.5
+    - 0.5
+    - 2.0
+    eps: 1.0e-08
+  tuning:
+    bounds:
+      kd_rp:
+      - 0.0
+      - 4.0
+      kd_xy:
+      - 0.2
+      - 3.0
+      kd_yaw:
+      - 0.2
+      - 3.0
+      kd_z:
+      - 0.2
+      - 3.0
+      ki_xy:
+      - 0.0
+      - 0.3
+      ki_yaw:
+      - 0.0
+      - 0.5
+      ki_z:
+      - 0.0
+      - 0.3
+      kp_rp:
+      - 0.0
+      - 4.0
+      kp_xy:
+      - 0.05
+      - 1.5
+      kp_yaw:
+      - 0.05
+      - 2.0
+      kp_z:
+      - 0.05
+      - 1.5
+    c1: 1.5
+    c2: 1.5
+    conv_tol: 0.001
+    conv_window: 20
+    divergence_penalty: 1000.0
+    iters: 30
+    seed: 17
+    swarm: 12
+    vmax_frac: 0.2
+    w: 0.7
+    w_effort: 0.001
+    w_pos: 5.0
+    w_yaw: 1.0
+  tuning_scenario:
+    duration_s: 60.0
+    init_pos:
+    - 1.0
+    - -1.0
+    - 0.5
+    init_rpy_deg:
+    - 0.0
+    - 0.0
+    - 0.0
+    name: tuning
+    wind:
+      gust_rate_per_min: 0.0
+      mean_dir_deg: 30.0
+      mean_speed_m_s: 1.5
+      turbulence_sigma_m_s:
+      - 0.2
+      - 0.2
+      - 0.1
+      turbulence_tau_s: 2.0
+    wind_seed: 17
+    yaw_ref_deg: 0.0
+    yaw_step_time_s: 30.0
+    yaw_step_to_deg: 45.0

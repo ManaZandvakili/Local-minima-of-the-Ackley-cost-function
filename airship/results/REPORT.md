@@ -142,6 +142,56 @@ isolate the effect of where the propellers are and which way they point (matched
 random layouts have the same N anyway). Options for the real airship: smaller
 motors, a larger hull, or limiting the optimizer to N <= 11.
 
+## Phase 3 results: allocation and PID baseline
+
+**Allocation.** Weighted bounded least squares (priorities Fx, Fy, yaw > Fz > roll,
+pitch), solved exactly by a small active-set solver: same answers as scipy's
+`lsq_linear` (to 1e-14), 16 µs per step instead of 600 µs. Reproduces any achievable
+wrench to 1e-6; for unachievable ones it returns the closest achievable wrench and
+reports the gap. Failed motors are handled by setting their bounds to zero.
+
+**PID.** Position PID in the world frame (with anti-windup), quaternion PD on roll and
+pitch, PID on yaw; output is a wrench into the same allocation the RL agent will use.
+Tuned **per layout** with the same PSO procedure as Final.py (12 particles, 30
+iterations), identical bounds, cost (5·RMS position + 1·RMS yaw + 0.001·∫Σu²dt) and
+tuning scenario (1.5 m/s wind with light turbulence, 1 m initial offset, 45° heading
+change). The full loop runs at about 3,400 control steps per second.
+
+**Acceptance (brief: RMS < 0.5 m in 2 m/s steady wind):** passed by every layout;
+the 15-propeller knee layout holds **0.086 m**.
+
+**First comparison: one gusty run, 3 m/s mean wind, turbulence and gusts, one seed**
+(full statistics come in Phase 5; run `results/pid/20261112_030317`):
+
+| Layout | N | RMS position | Max position | Effort [N²s] | Saturation | Survived |
+|---|---|---|---|---|---|---|
+| Optimized knee | 15 | **0.30 m** | 0.71 m | 24,186 | 8.5 % | yes |
+| Random, median of 20 | 15 | 0.47 m | 1.59 m | 17,967 | 8.1 % | 17/20 |
+| Optimized paper-rule pick | 22 | **0.23 m** | 0.52 m | **6,245** | 0.2 % | yes |
+| Random, median of 20 | 22 | 0.28 m | 0.72 m | 17,020 | 2.0 % | 20/20 |
+| Optimized, capped (buildable) | 9 | **0.29 m** | 1.56 m | 16,832 | 6.6 % | yes |
+| Random, median of 20 | 9 | 3.67 m | 8.84 m | 20,328 | 23.8 % | **12/20** |
+| Minimum-N Pareto layout | 7 | 0.79 m | 3.64 m | 22,914 | 24.1 % | yes |
+| Conference paper layout | 16 | 0.26 m | 0.68 m | 19,256 | 3.7 % | yes |
+| STARLab 6 thrusters (reversible) | 6 | 0.28 m | 1.01 m | 10,783 | 1.9 % | yes |
+
+What this shows so far:
+- In **steady** wind every layout tracks about the same (when the motors can deliver
+  what the controller asks, the layout only changes the effort). The differences
+  appear in **gusty** wind, when motors start hitting their limits.
+- The optimized layout beats the typical random layout with the same number of
+  propellers at every N. The gap is largest with few propellers: at **N = 9**, the
+  optimized layout holds 0.29 m while the typical random layout drifts 3.7 m and
+  8 of 20 random layouts lose control.
+- The knee layout's effort is higher than the random median in this single run.
+  Effort depends strongly on each layout's tuned gains (the tuning cost weighs effort
+  lightly), so this needs the multi-seed comparison in Phase 5 before drawing a
+  conclusion.
+- The **STARLab layout does well in station keeping** with only 6 thrusters, because
+  its thrusters are reversible and point straight along x, y and z. It cannot control
+  roll at all (the pendulum keeps it level), and it uses a different kind of motor
+  (reversible), so it is not a like-for-like comparison with push-only layouts.
+
 ## Open questions
 
 **B. Maximum thrust per propeller.** No published thrust figure exists for the
