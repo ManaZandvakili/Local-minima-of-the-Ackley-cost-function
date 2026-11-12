@@ -19,7 +19,7 @@ python -m pytest -q                              # all tests
 | 0 | Physical-unit wrench matrix, layout JSON format, layout helpers | **done** |
 | 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done** |
 | 2 | 6-DOF sphere simulator | **done** |
-| 3 | Bounded allocation and PID baseline | — |
+| 3 | Bounded allocation and PID baseline | **done** |
 | 4 | RL environment and training | — |
 | 5 | Experiments and paper outputs | — |
 
@@ -102,6 +102,21 @@ Layout files also carry `u_min_N` (0 = push-only, negative = reversible) and
 ```bash
 pip install numba
 python scripts/demo_simulator.py          # results/figures/phase2_demo.png
+```
+
+## Phase 3: what's here
+
+| File | Purpose |
+|---|---|
+| `airship/allocation.py` | best-effort bounded allocation: min ‖W(Mu − τ)‖² + ε‖u‖², u_min ≤ u ≤ u_max; exact active-set solver (numba, warm-started, ~16 µs); returns thrusts, achieved wrench, gap, saturation flags |
+| `airship/controllers/pid.py` | cascaded PID: world-frame position PID with anti-windup, quaternion PD on roll/pitch, PID on yaw; outputs a body-frame wrench |
+| `airship/controllers/tuning.py` | per-layout PSO tuning with Final.py's procedure; identical bounds, cost, scenario and budget for every layout |
+| `airship/closed_loop.py` | `Scenario` and `run_episode`: controller → allocation → simulator, with RMS/max position error, yaw error, effort, saturation, wrench gap, survival and recovery time |
+| `configs/pid.yaml` | allocation weights, tuning bounds/cost, tuning and acceptance scenarios |
+| `scripts/tune_pid.py` | tunes all Phase 3-5 layouts in parallel, then flies the acceptance (2 m/s steady) and a turbulent check |
+
+```bash
+python scripts/tune_pid.py --run results/layouts/phase1_20261112_015323 --workers 4   # ~15 min
 ```
 
 Open questions and assumptions are tracked in `results/REPORT.md`.
