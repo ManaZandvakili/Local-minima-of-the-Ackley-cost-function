@@ -17,7 +17,7 @@ python -m pytest -q                              # all tests
 | Phase | What | Status |
 |---|---|---|
 | 0 | Physical-unit wrench matrix, layout JSON format, layout helpers | **done** |
-| 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | next |
+| 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done, waiting for review** |
 | 2 | 6-DOF sphere simulator | — |
 | 3 | Bounded allocation and PID baseline | — |
 | 4 | RL environment and training | — |
@@ -68,5 +68,25 @@ Propellers must lie on the hull surface; thrust directions must be unit vectors.
 `positions_m = positions_normalised × 1.575`, and the matrix built from metres
 equals `Final.py`'s matrix with its torque rows multiplied by R, which is what
 its simulator does. `tests/test_wrench.py` checks this to 1e-12 for all three hulls.
+
+## Phase 1: what's here
+
+| File | Purpose |
+|---|---|
+| `airship/feasibility.py` | bounded-thrust capacity LP; 12 signed-axis capacities (the RL capability vector); `Requirements` and a graded `shortfall`; `assess` adds 50 mixed directions |
+| `airship/optimizer/objectives.py` | the paper's five objectives, authority and conditioning, ported from Final.py (identical values, checked in tests) |
+| `airship/optimizer/pso.py` | the PSO, ported; rank-6 gate replaced by the capacity test, no top-6 fallback, seeded, no SVD noise |
+| `airship/optimizer/pareto.py` | Pareto filter (Final.py rule), knee point, paper pick order |
+| `airship/optimizer/random_layouts.py` | matched-N random feasible layouts with the new test |
+| `configs/optimizer.yaml` | seeds, PSO settings, capacity requirements, geometric constants |
+| `scripts/run_optimizer.py` | runs all seeds in parallel, writes a timestamped run folder, layouts and a report |
+
+```bash
+python scripts/run_optimizer.py --workers 4          # ~15-20 min for 5 seeds on 4 cores
+python scripts/run_optimizer.py --summarize results/runs/phase1_<timestamp>
+```
+
+Layout files also carry `u_min_N` (0 = push-only, negative = reversible) and
+`allow_off_hull` (motors on arms or on the gondola).
 
 Open questions and assumptions are tracked in `results/REPORT.md`.

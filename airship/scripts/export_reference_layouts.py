@@ -3,7 +3,7 @@
 1. The paper's best layouts (sphere 16, cigar 13, oblate 16 props), from the
    best_config_*.npz files that clean_best_configs.py produced by re-running
    Final.py with the paper's cost function (direction symmetry on).
-2. The current STARLab 4-motor layout, read from the SFOC drawings.
+2. The as-built STARLab 6-thruster set (forward, side and lift pairs, reversible).
 
 Usage (from the airship/ folder):
     python scripts/export_reference_layouts.py
@@ -82,32 +82,47 @@ def export_paper_layouts(final):
         print(f"{save(lay, OUT / f'{lay.name}.json').relative_to(ROOT)}  N={lay.n_props}")
 
 
-def export_starlab_4prop():
-    """Four equatorial BLDC motors at 90 deg spacing (SFOC drawing DWG 2, sheets 1-2).
+GONDOLA_MOTOR_THRUST_N = 6.0   # guess: 107 g motor + propeller (gondola pair), no data
+GONDOLA_DROP_M = 0.25          # assumption: gondola motor height below the hull bottom
+GONDOLA_HALF_SPACING_M = 0.25  # assumption: lift motors 0.25 m either side of centre, along x
 
-    The drawings show each propeller disc facing along the hull surface, i.e. a
-    horizontal thrust axis tangent to the equator. The push direction (sign)
-    of each motor is not stated, so all four are assumed to push
-    counter-clockwise seen from above; the motor arms are ignored and the
-    motors are placed on the hull surface.
+
+def export_starlab_6thruster():
+    """The as-built STARLab thruster set (project page, drawings, mass budget).
+
+    - Forward pair: hull motors at +-y on the equator, thrust along x.
+    - Side pair: hull motors at +-x on the equator, thrust along y
+      (sideways together, turning when opposed).
+    - Lift pair: two smaller motors on the gondola, thrust along z.
+    All motors are reversible (Mana: yes). Body +x is taken as forward; hull
+    motors are placed on the hull surface (arm offset ignored).
     """
     hull = hull_from_config(CFG)
-    az = np.deg2rad([0, 90, 180, 270])
-    r_hat = np.column_stack([np.cos(az), np.sin(az), np.zeros(4)])
-    dirs = np.cross([0.0, 0.0, 1.0], r_hat)                       # tangential, CCW
+    z_g = -(R + GONDOLA_DROP_M)
+    pos = np.array([[0, R, 0], [0, -R, 0],                  # forward pair
+                    [R, 0, 0], [-R, 0, 0],                  # side pair
+                    [GONDOLA_HALF_SPACING_M, 0, z_g], [-GONDOLA_HALF_SPACING_M, 0, z_g]])  # lift pair
+    dirs = np.array([[1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 1, 0], [0, 0, 1], [0, 0, 1]], dtype=float)
+    u_max = np.array([U_MAX] * 4 + [GONDOLA_MOTOR_THRUST_N] * 2)
     lay = Layout(
-        name="sphere_starlab_4prop", shape="sphere", semi_axes_m=hull.semi_axes_m,
-        positions_m=r_hat * R, directions=dirs, u_max_N=U_MAX, source="hand",
+        name="sphere_starlab_6thruster", shape="sphere", semi_axes_m=hull.semi_axes_m,
+        positions_m=pos, directions=dirs, u_max_N=u_max, u_min_N=-u_max, allow_off_hull=True,
+        source="hand",
         notes={
-            "origin": "SFOC application, drawing DWG 2 (four station-keeping BLDC motors on the equator)",
-            "assumed": "push direction of each motor (all CCW seen from above); motor arm offset ignored; "
-                       "u_max estimated (Kavan C3536-1250kv, 11-inch prop; see configs/sphere.yaml)",
-            "controllable_dofs": "Fx, Fy, Mz only (all thrust is horizontal)",
+            "origin": "ACCESS project page (forward, side and lift pairs), SFOC drawing DWG 2, mass budget",
+            "assumed": "body +x forward; hull motors on the hull surface (arms ignored); gondola motors "
+                       f"{GONDOLA_DROP_M} m below the hull bottom, +-{GONDOLA_HALF_SPACING_M} m along x; "
+                       f"hull motors {U_MAX} N (estimated), gondola motors {GONDOLA_MOTOR_THRUST_N} N (guess); "
+                       "reverse thrust taken equal to forward thrust",
+            "reversible": "yes (Mana)",
         },
     )
+    old = OUT / "sphere_starlab_4prop.json"
+    if old.exists():
+        old.unlink()                                        # superseded by the 6-thruster layout
     print(f"{save(lay, OUT / f'{lay.name}.json').relative_to(ROOT)}  N={lay.n_props}")
 
 
 if __name__ == "__main__":
     export_paper_layouts(load_final())
-    export_starlab_4prop()
+    export_starlab_6thruster()

@@ -1,0 +1,37 @@
+# Phase 1 optimizer settings (sphere). PSO values are the paper's (Table II) unless noted.
+hull_config: sphere          # configs/sphere.yaml supplies the hull and u_max
+K_candidates: 30
+seeds: [0, 1, 2, 3, 4]       # brief: at least 5 seeds
+trials_per_seed: 20          # paper: 20 PSO trials, each with its own Dirichlet weights
+
+pso:
+  swarm_size: 30
+  iters: 80
+  w_start: 0.90
+  w_end: 0.40
+  c_cog: 1.6
+  c_soc: 1.6
+  v_max_frac: 0.2
+  penalty_feasibility: 10000.0   # times the capacity shortfall (replaces the rank-6 penalty)
+  cond_threshold: 100.0
+  dof_weights: [2.0, 2.0, 0.3, 0.3, 0.3, 2.0]   # Fx Fy Fz Mx My Mz (paper)
+
+feasibility:                     # minimum capacity along each signed axis, push-only thrust
+  min_force_N: 1.0               # +-Fx, +-Fy, +-Fz
+  min_yaw_Nm: 1.0                # +-Mz
+  min_roll_pitch_Nm: 0.25        # +-Mx, +-My: lower, the gondola pendulum gives passive roll/pitch stability
+  required_dofs: [Fx, Fy, Fz, Mx, My, Mz]
+  n_sampled_directions: 50       # extra mixed directions checked on exported layouts
+  sample_seed: 0
+
+geometry_rules:                  # the geometric objective's constants (Final.py values)
+  prop_diameter_m: 0.1778        # 7-inch, as in the paper; the real props are 11-inch (see REPORT.md)
+  spacing_diameters: 2.5
+  ang_min_deg: 40.0
+  gondola_keepout_deg: 35.0
+  downwash_cone_deg: 15.0
+
+selection:
+  random_matched: 20             # matched-N random layouts exported for the chosen layout
+  random_min: 15                 # paper rule: first Pareto layout (by planar authority) with this many
+  random_seed_offset: 42         # sampler seed = offset + N (as in Final.py)

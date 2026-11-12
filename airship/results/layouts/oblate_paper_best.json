@@ -171,6 +171,8 @@
     ]
   ],
   "u_max_N": 12.0,
+  "u_min_N": 0.0,
+  "allow_off_hull": false,
   "source": "optimizer",
   "objectives": {
     "J1_count": 1.0666666666666667,

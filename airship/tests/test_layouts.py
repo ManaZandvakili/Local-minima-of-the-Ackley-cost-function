@@ -87,3 +87,22 @@ def test_validation():
         Layout("x", "sphere", hull.semi_axes_m, p, d, source="magic")
     with pytest.raises(ValueError, match="u_max_N"):
         Layout("x", "sphere", hull.semi_axes_m, p, d, u_max_N=[1, 2])
+
+
+def test_reversible_off_hull_roundtrip(tmp_path):
+    hull = Hull.sphere(R)
+    p = np.array([[R, 0, 0], [0, 0, -R - 0.25]])          # one on the hull, one on the gondola
+    d = np.array([[0, 1.0, 0], [0, 0, 1.0]])
+    with pytest.raises(ValueError, match="off the hull"):
+        Layout("x", "sphere", hull.semi_axes_m, p, d)
+    lay = Layout("x", "sphere", hull.semi_axes_m, p, d, u_max_N=[12, 6], u_min_N=[-12, -6],
+                 allow_off_hull=True, source="hand")
+    back = load(save(lay, tmp_path / "x.json"))
+    np.testing.assert_array_equal(back.u_min, [-12, -6])
+    assert back.on_hull.tolist() == [True, False]
+    f = remove_prop(back, 0)
+    np.testing.assert_array_equal(f.u_min, [-6])
+    q = perturb(back, 0.02, 2.0, np.random.default_rng(0))
+    assert q.on_hull.tolist() == [True, False]             # hull motor stays on the hull
+    with pytest.raises(ValueError, match="u_min_N"):
+        Layout("x", "sphere", hull.semi_axes_m, p, d, u_min_N=1.0, allow_off_hull=True)

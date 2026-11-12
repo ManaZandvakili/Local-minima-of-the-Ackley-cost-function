@@ -1,0 +1,98 @@
+{
+  "name": "sphere_starlab_6thruster",
+  "shape": "sphere",
+  "semi_axes_m": [
+    1.575,
+    1.575,
+    1.575
+  ],
+  "positions_m": [
+    [
+      0.0,
+      1.575,
+      0.0
+    ],
+    [
+      0.0,
+      -1.575,
+      0.0
+    ],
+    [
+      1.575,
+      0.0,
+      0.0
+    ],
+    [
+      -1.575,
+      0.0,
+      0.0
+    ],
+    [
+      0.25,
+      0.0,
+      -1.825
+    ],
+    [
+      -0.25,
+      0.0,
+      -1.825
+    ]
+  ],
+  "directions": [
+    [
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      1.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ],
+    [
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "u_max_N": [
+    12.0,
+    12.0,
+    12.0,
+    12.0,
+    6.0,
+    6.0
+  ],
+  "u_min_N": [
+    -12.0,
+    -12.0,
+    -12.0,
+    -12.0,
+    -6.0,
+    -6.0
+  ],
+  "allow_off_hull": true,
+  "source": "hand",
+  "objectives": {},
+  "seed": null,
+  "notes": {
+    "origin": "ACCESS project page (forward, side and lift pairs), SFOC drawing DWG 2, mass budget",
+    "assumed": "body +x forward; hull motors on the hull surface (arms ignored); gondola motors 0.25 m below the hull bottom, +-0.25 m along x; hull motors 12.0 N (estimated), gondola motors 6.0 N (guess); reverse thrust taken equal to forward thrust",
+    "reversible": "yes (Mana)"
+  }
+}

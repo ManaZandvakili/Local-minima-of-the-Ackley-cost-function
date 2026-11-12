@@ -8,6 +8,10 @@ JSON fields (all lengths in metres, thrust in newtons):
     positions_m   N x 3 mounting points, body frame (origin at hull centre, z up)
     directions    N x 3 unit thrust directions
     u_max_N       maximum thrust per propeller (scalar, or a list of N values)
+    u_min_N       minimum thrust per propeller, default 0 (push-only); negative
+                  for reversible motors, e.g. -u_max_N
+    allow_off_hull  default false; true for layouts with motors on arms or on the
+                  gondola (otherwise every propeller must lie on the hull surface)
     source        "optimizer" | "random" | "hand" | "perturbed" | "failure"
     objectives    dict of objective values (may be empty)
     seed          int or null
@@ -37,6 +41,8 @@ class Layout:
     positions_m: np.ndarray
     directions: np.ndarray
     u_max_N: object = 2.5
+    u_min_N: object = 0.0
+    allow_off_hull: bool = False
     source: str = "optimizer"
     objectives: dict = field(default_factory=dict)
     seed: int | None = None
@@ -52,12 +58,14 @@ class Layout:
             raise ValueError(f"{self.name}: directions must be unit vectors (norms {norms.round(6)})")
         if self.source not in SOURCES:
             raise ValueError(f"{self.name}: source must be one of {SOURCES}, got {self.source!r}")
-        u = np.asarray(self.u_max_N, dtype=float)
-        if u.ndim not in (0, 1) or (u.ndim == 1 and u.shape[0] != p.shape[0]) or np.any(u < 0):
-            raise ValueError(f"{self.name}: u_max_N must be >= 0, a scalar or one value per propeller")
+        for key, sign in (("u_max_N", 1), ("u_min_N", -1)):
+            u = np.asarray(getattr(self, key), dtype=float)
+            if u.ndim not in (0, 1) or (u.ndim == 1 and u.shape[0] != p.shape[0]) or np.any(sign * u < 0):
+                raise ValueError(f"{self.name}: {key} must be {'>=' if sign > 0 else '<='} 0, "
+                                 "a scalar or one value per propeller")
         hull = Hull(self.shape, tuple(float(x) for x in self.semi_axes_m))
         off = hull.surface_distance(p)
-        if np.any(off > _ON_HULL_TOL_M):
+        if not self.allow_off_hull and np.any(off > _ON_HULL_TOL_M):
             raise ValueError(f"{self.name}: propellers {np.flatnonzero(off > _ON_HULL_TOL_M).tolist()} "
                              f"are off the hull surface (max {off.max():.3g} m)")
         object.__setattr__(self, "positions_m", p)
@@ -77,19 +85,33 @@ class Layout:
         """Per-propeller maximum thrust as an N-vector [N]."""
         return np.broadcast_to(np.asarray(self.u_max_N, dtype=float), (self.n_props,)).copy()
 
+    @property
+    def u_min(self):
+        """Per-propeller minimum thrust as an N-vector [N] (0 = push-only)."""
+        return np.broadcast_to(np.asarray(self.u_min_N, dtype=float), (self.n_props,)).copy()
+
+    @property
+    def on_hull(self):
+        """Boolean N-vector: which propellers sit on the hull surface."""
+        return self.hull.surface_distance(self.positions_m) <= _ON_HULL_TOL_M
+
     def M(self):
         """6 x N wrench matrix in physical units."""
         return build_M(self.positions_m, self.directions)
 
     def to_dict(self):
-        u = np.asarray(self.u_max_N, dtype=float)
+        def num(v):
+            v = np.asarray(v, dtype=float)
+            return float(v) if v.ndim == 0 else v.tolist()
         return {
             "name": self.name,
             "shape": self.shape,
             "semi_axes_m": [float(x) for x in self.semi_axes_m],
             "positions_m": self.positions_m.tolist(),
             "directions": self.directions.tolist(),
-            "u_max_N": float(u) if u.ndim == 0 else u.tolist(),
+            "u_max_N": num(self.u_max_N),
+            "u_min_N": num(self.u_min_N),
+            "allow_off_hull": bool(self.allow_off_hull),
             "source": self.source,
             "objectives": {k: float(v) for k, v in self.objectives.items()},
             "seed": self.seed,
@@ -102,7 +124,8 @@ class Layout:
             name=d["name"], shape=d["shape"], semi_axes_m=tuple(d["semi_axes_m"]),
             positions_m=np.asarray(d["positions_m"], dtype=float),
             directions=np.asarray(d["directions"], dtype=float),
-            u_max_N=d.get("u_max_N", 2.5), source=d.get("source", "optimizer"),
+            u_max_N=d.get("u_max_N", 2.5), u_min_N=d.get("u_min_N", 0.0),
+            allow_off_hull=bool(d.get("allow_off_hull", False)), source=d.get("source", "optimizer"),
             objectives=dict(d.get("objectives") or {}), seed=d.get("seed"),
             notes=dict(d.get("notes") or {}),
         )
@@ -124,13 +147,17 @@ def remove_prop(layout, i):
     if not 0 <= i < layout.n_props:
         raise IndexError(f"propeller {i} out of range for {layout.n_props} propellers")
     keep = np.arange(layout.n_props) != i
-    u = np.asarray(layout.u_max_N, dtype=float)
+
+    def drop(v):
+        v = np.asarray(v, dtype=float)
+        return float(v) if v.ndim == 0 else v[keep]
     return replace(
         layout,
         name=f"{layout.name}_minus{i}",
         positions_m=layout.positions_m[keep],
         directions=layout.directions[keep],
-        u_max_N=float(u) if u.ndim == 0 else u[keep],
+        u_max_N=drop(layout.u_max_N),
+        u_min_N=drop(layout.u_min_N),
         source="failure",
         objectives={},
         notes={"parent": layout.name, "removed_index": int(i)},
@@ -148,12 +175,14 @@ def _rotate_small(d, angle_rad, rng):
 def perturb(layout, pos_sigma_m, ang_sigma_deg, rng, name=None):
     """Manufacturing-tolerance copy of a layout.
 
-    Each mounting point gets Gaussian noise (std pos_sigma_m per axis) and is
-    projected back onto the hull. Each thrust direction is tilted by a
+    Each mounting point gets Gaussian noise (std pos_sigma_m per axis); points
+    on the hull are projected back onto it. Each thrust direction is tilted by a
     Gaussian angle (std ang_sigma_deg) about a random perpendicular axis.
     """
     hull = layout.hull
-    p = hull.project(layout.positions_m + rng.normal(scale=pos_sigma_m, size=layout.positions_m.shape))
+    p = layout.positions_m + rng.normal(scale=pos_sigma_m, size=layout.positions_m.shape)
+    on = layout.on_hull
+    p[on] = hull.project(p[on])
     tilts = np.deg2rad(rng.normal(scale=ang_sigma_deg, size=layout.n_props))
     d = np.array([_rotate_small(di, t, rng) for di, t in zip(layout.directions, tilts)])
     return replace(
