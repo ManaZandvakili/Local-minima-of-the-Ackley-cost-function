@@ -25,13 +25,20 @@ class RLController:
         self.reset()
 
     @classmethod
-    def load(cls, run_dir, layout_caps, checkpoint=None):
+    def load(cls, run_dir, layout_caps, checkpoint_steps=None):
+        """Final model, or the checkpoint saved after `checkpoint_steps` training steps."""
+        import yaml
         from stable_baselines3 import PPO
         run_dir = Path(run_dir)
-        import yaml
         cfg = yaml.safe_load(open(run_dir / "config.yaml"))["train_rl"]
-        model = PPO.load(checkpoint or run_dir / "model", device="cpu")
-        vn = pickle.load(open(run_dir / "vecnormalize.pkl", "rb"))
+        if checkpoint_steps is None:
+            model_path, vn_path = run_dir / "model", run_dir / "vecnormalize.pkl"
+        else:
+            c = run_dir / "checkpoints"
+            model_path = c / f"ppo_{checkpoint_steps}_steps"
+            vn_path = c / f"ppo_vecnormalize_{checkpoint_steps}_steps.pkl"
+        model = PPO.load(model_path, device="cpu")
+        vn = pickle.load(open(vn_path, "rb"))
         return cls(model, vn.obs_rms, cfg["env"], layout_caps, clip_obs=vn.clip_obs, epsilon=vn.epsilon,
                    dt=1.0 / cfg["env"]["control_hz"])
 

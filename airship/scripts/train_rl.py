@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 import torch                                                        # noqa: E402
 from stable_baselines3 import PPO                                   # noqa: E402
 from stable_baselines3.common.callbacks import BaseCallback, CheckpointCallback  # noqa: E402
-from stable_baselines3.common.vec_env import SubprocVecEnv, VecMonitor, VecNormalize  # noqa: E402
+from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMonitor, VecNormalize  # noqa: E402
 
 from airship.config import load_config                              # noqa: E402
 from airship.dynamics import DynamicsParams                         # noqa: E402
@@ -101,7 +101,7 @@ def main():
     total = a.steps or pc["total_steps"]
     out = ROOT / "results" / "rl" / f"{datetime.now():%Y%m%d_%H%M%S}{a.tag}_seed{a.seed}"
     out.mkdir(parents=True)
-    torch.set_num_threads(1)
+    torch.set_num_threads(1 if pc.get("vec_env", "subproc") == "subproc" else 2)
 
     params = DynamicsParams.from_config(load_config("sphere"))
     t0 = time.time()
@@ -113,13 +113,15 @@ def main():
                     "total_steps": total, "pool": pool.summary()}, open(out / "config.yaml", "w"))
 
     stages = cfg["curriculum"]
-    venv = SubprocVecEnv([make_env(pool, cfg, params, stages[0], a.seed * 1000 + i) for i in range(n_envs)])
+    VecCls = SubprocVecEnv if pc.get("vec_env", "subproc") == "subproc" else DummyVecEnv
+    venv = VecCls([make_env(pool, cfg, params, stages[0], a.seed * 1000 + i) for i in range(n_envs)])
     venv = VecNormalize(VecMonitor(venv), norm_obs=True, norm_reward=True, gamma=pc["gamma"])
     act = {"tanh": torch.nn.Tanh, "relu": torch.nn.ReLU}[pc["activation"]]
     model = PPO("MlpPolicy", venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"], n_epochs=pc["n_epochs"],
                 learning_rate=pc["learning_rate"], gamma=pc["gamma"], gae_lambda=pc["gae_lambda"],
                 clip_range=pc["clip_range"], ent_coef=pc["ent_coef"], seed=a.seed, verbose=0,
-                policy_kwargs={"net_arch": list(pc["net_arch"]), "activation_fn": act},
+                policy_kwargs={"net_arch": list(pc["net_arch"]), "activation_fn": act,
+                               "log_std_init": pc.get("log_std_init", 0.0)},
                 tensorboard_log=str(out / "tb"), device="cpu")
     cb = [CurriculumAndTerms(stages, out),
           CheckpointCallback(save_freq=max(500_000 // n_envs, 1), save_path=str(out / "checkpoints"),

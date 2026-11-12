@@ -64,7 +64,7 @@ def run_episode(layout, params, controller, scenario, physics_hz=100, control_hz
     dt = 1.0 / control_hz
     n = int(round(scenario.duration_s * control_hz))
     pos_err, yaw_err, tilt, effort, sat, gap_frac = (np.zeros(n) for _ in range(6))
-    rec = {"t": [], "x": [], "u": [], "wrench_cmd": [], "wrench_ach": [], "wind": []} if log else None
+    rec = {"t": [], "x": [], "u": [], "wrench_cmd": [], "wrench_ach": [], "wind": [], "yaw_ref": []} if log else None
     failed, diverged = False, False
     for k in range(n):
         t = k * dt
@@ -89,6 +89,7 @@ def run_episode(layout, params, controller, scenario, physics_hz=100, control_hz
         if log:
             rec["t"].append(sim.t); rec["x"].append(x); rec["u"].append(x[13:].copy())
             rec["wrench_cmd"].append(tau_cmd); rec["wrench_ach"].append(res.achieved); rec["wind"].append(sim.last_wind)
+            rec["yaw_ref"].append(yaw_ref)
         if not np.all(np.isfinite(x)) or pos_err[k] > divergence_m or tilt[k] > max_tilt_deg:
             diverged = True
             n = k + 1
@@ -110,4 +111,7 @@ def run_episode(layout, params, controller, scenario, physics_hz=100, control_hz
         out["recovery_s"] = float((within[-1] + 1) * dt) if within.size else 0.0
     if log:
         out["log"] = {k: np.array(v) for k, v in rec.items()}
+        if scenario.fail_prop is not None:
+            out["log"]["fail_prop"] = scenario.fail_prop
+            out["log"]["fail_step"] = int(round(scenario.fail_time_s * control_hz))
     return out

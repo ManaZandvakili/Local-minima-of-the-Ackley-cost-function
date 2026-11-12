@@ -194,14 +194,18 @@ class StationKeepingEnv(gym.Env):
         u = x[13:]
         n_live = max(np.sum(self.sim.u_hi - self.sim.u_lo > 0), 1)
         umax = np.max(np.abs(self.layout.u_max))
+        # every penalty is bounded: q(z) = z^2 / (1 + z^2) is quadratic near 0 and < 1, so with
+        # r_alive > sum of the weights, staying alive always pays (no incentive to crash early)
+        def q(z2):
+            return z2 / (1.0 + z2)
         terms = {
-            "pos": -rw["w_p"] * (ep / rw["pos_norm_m"]) ** 2,
-            "yaw": -rw["w_yaw"] * ey ** 2,
-            "att": -rw["w_att"] * (roll ** 2 + pitch ** 2),
-            "rate": -rw["w_w"] * float(x[10:13] @ x[10:13]),
+            "pos": -rw["w_p"] * q((ep / rw["pos_norm_m"]) ** 2),
+            "yaw": -rw["w_yaw"] * q((ey / rw["yaw_norm_rad"]) ** 2),
+            "att": -rw["w_att"] * q((roll ** 2 + pitch ** 2) / rw["att_norm_rad"] ** 2),
+            "rate": -rw["w_w"] * q(float(x[10:13] @ x[10:13]) / rw["rate_norm_rad_s"] ** 2),
             "effort": -rw["w_u"] * float(u @ u) / (n_live * umax ** 2),
-            "gap": -rw["w_gap"] * float(np.sum((self.gap / self.scale) ** 2)),
-            "smooth": -rw["w_da"] * float(np.sum((a - self.a_prev) ** 2)),
+            "gap": -rw["w_gap"] * q(float(np.sum((self.gap / self.scale) ** 2))),
+            "smooth": -rw["w_da"] * q(float(np.sum((a - self.a_prev) ** 2))),
             "alive": rw["r_alive"],
         }
         reward = float(sum(terms.values()))
