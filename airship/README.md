@@ -49,7 +49,7 @@ python scripts/export_reference_layouts.py
   "shape": "sphere", "semi_axes_m": [1.575, 1.575, 1.575],
   "positions_m": [[x, y, z], ...],
   "directions": [[dx, dy, dz], ...],
-  "u_max_N": 2.5,
+  "u_max_N": 12.0,
   "source": "optimizer | random | hand | perturbed | failure",
   "objectives": {"J1_count": 1.067, "J2_effort": 1.207, ...},
   "seed": null,

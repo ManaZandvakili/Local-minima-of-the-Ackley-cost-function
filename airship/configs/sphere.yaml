@@ -11,7 +11,9 @@
 hull:
   shape: sphere
   diameter_m: 3.15            # confirmed (Mana; SFOC sec. 3; drawing DWG 2)
-  volume_m3: 16.4             # derived: 4/3*pi*r^3 = 16.37 m^3 (SFOC: "approximately 16.4")
+  volume_m3: 16.4             # derived: 4/3*pi*r^3 = 16.37 m^3 (SFOC and design: 16.4; QUOTE: 16.5)
+  ballonet_volume_m3: 0.28    # confirmed (QUOTE; project page): 0.82 m sphere
+  ballast_bars_kg: [1.0, 1.0, 1.0]  # confirmed (QUOTE): 3 lead bars for rough balancing, plus 6 balance pockets
 
 air:
   density_kg_m3: 1.225        # assumption: ISA sea level, 15 C (Arctic -15 C air is ~1.37)
@@ -27,9 +29,16 @@ mass:
   cg_below_cb_m: 0.30         # assumption (not in SFOC)
 
 propulsion:
-  u_max_N: 2.5                # assumption: from Final ("Kavan 7-inch"); SFOC gives no motor/thrust data
+  # QUOTE = Aero Drum official quotation, 3.15 m sphere with ballonet (Aug 2025)
+  motor: Kavan C3536-1250kv   # confirmed (QUOTE): 4 motors, Kavan 50 A ESCs, 11-inch propellers
+  propeller_in: 11            # confirmed (QUOTE)
+  # Kavan publishes no static-thrust figure for this motor. It is rated 420 W max (30 s, 4S),
+  # with 11x5 recommended on 3S; motors of this class with an 11-inch prop give roughly
+  # 1.2-1.3 kg (12-13 N) at full throttle. Final.py used 2.5 N (a 7-inch prop).
+  u_max_N: 12.0               # estimate: needs a thrust-stand measurement
   reverse_thrust: false       # confirmed (brief) for the optimizer; see REPORT.md about the 4-motor STARLab layout
   motor_time_constant_s: 0.10 # assumption
+  arm_tube: 15x1 mm aluminium # confirmed (QUOTE); arm length not given, motors modelled on the hull surface
 
 operating_limits:             # confirmed (SFOC sec. 7 / Appendix A)
   sustained_wind_max_m_s: 5.6

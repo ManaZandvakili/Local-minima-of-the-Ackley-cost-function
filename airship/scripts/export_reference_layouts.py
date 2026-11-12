@@ -101,7 +101,7 @@ def export_starlab_4prop():
         notes={
             "origin": "SFOC application, drawing DWG 2 (four station-keeping BLDC motors on the equator)",
             "assumed": "push direction of each motor (all CCW seen from above); motor arm offset ignored; "
-                       "u_max from Final.py",
+                       "u_max estimated (Kavan C3536-1250kv, 11-inch prop; see configs/sphere.yaml)",
             "controllable_dofs": "Fx, Fy, Mz only (all thrust is horizontal)",
         },
     )
