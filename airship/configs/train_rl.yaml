@@ -1,0 +1,84 @@
+# Phase 4: station-keeping RL environment and PPO training (brief, section 8).
+env:
+  episode_s: 60.0
+  control_hz: 10
+  physics_hz: 100
+  action_scale: [30.0, 30.0, 30.0, 30.0, 30.0, 30.0]   # N, N, N, N*m, N*m, N*m per unit action.
+                                                     # Brief default 6; raised because the wind drag
+                                                     # alone is ~17 N at 3 m/s and capacities are 10-40.
+  action_filter_tau_s: 0.0       # optional first-order low-pass on the action (0 = off)
+  pos_scale_m: 5.0               # observation normalisation
+  vel_scale_m_s: 2.0
+  rate_scale_rad_s: 1.0
+  integral_clip_m_s: 10.0
+  init_offset_m: 2.0             # brief: initial offset up to 2 m
+  init_yaw_deg: 20.0             # brief: initial yaw up to 20 deg
+  heading_change_deg: 90.0       # heading command changes once per episode by up to this much
+  terminate_pos_m: 10.0
+  terminate_tilt_deg: 60.0
+
+reward:                          # r = -w_p|e_p|^2 - w_yaw e_yaw^2 - w_att(roll^2+pitch^2) - w_w|w|^2
+  w_p: 1.0                       #     - w_u sum(u^2)/(N u_max^2) - w_gap|gap|^2 - w_da|a_t - a_t-1|^2 + r_alive
+  w_yaw: 0.3
+  w_att: 0.3
+  w_w: 0.05
+  w_u: 0.2
+  w_gap: 0.05                    # gap in action units (wrench / action_scale)
+  w_da: 0.05
+  r_alive: 1.0
+  pos_norm_m: 1.0                # e_p is divided by this before squaring
+
+wind:
+  mean_speed_m_s: [0.0, 4.0]     # brief training range (SFOC limit is 5.6 m/s; see REPORT question E)
+  turbulence_sigma_m_s: [0.0, 0.5]
+  turbulence_tau_s: 2.0
+  gust_rate_per_min: [0.0, 2.0]
+  gust_amplitude_m_s: [1.0, 3.0]
+  gust_duration_s: [2.0, 6.0]
+
+randomization:                   # brief domain randomisation
+  mass_frac: 0.10                # mass and inertia scaled together; buoyancy follows (trimmed)
+  net_lift_kg: 0.3               # residual trim error, +-
+  added_mass_frac: 0.20
+  drag_frac: 0.30
+  h_cg_frac: 0.30
+  motor_tau_s: [0.05, 0.20]
+  disturbance_torque_Nm: 0.05
+  sensor_noise: {pos_m: 0.05, vel_m_s: 0.05, att_rad: 0.01, rate_rad_s: 0.01}
+  action_delay_prob: 0.3         # per episode: the action takes effect one step late
+  midflight_failure_prob: 0.2    # one propeller fails at a random time
+
+layouts:
+  pareto_runs: [phase1_20261112_015323, phase1_maxN11_20261112_024218]
+  random_runs: [phase1_20261112_015323, phase1_maxN11_20261112_024218]
+  include_references: [sphere_paper_best, sphere_starlab_6thruster]
+  hand_designed_glob: sphere_hand_*.json
+  perturbations_per_layout: 2
+  perturb_pos_sigma_m: 0.02
+  perturb_ang_sigma_deg: 2.0
+  failure_variants: true         # remove one column, kept if still able to produce +-Fx, +-Fy, +-Mz
+  max_failure_variants: 150      # random subset, so failures do not dominate the pool
+  holdout_random_frac: 0.25
+  holdout_pareto: 1
+  split_seed: 0
+
+curriculum:                      # advance when the mean episode RMS position error is below the threshold
+  - {name: calm_knee,   layouts: knee, wind: calm,   randomize: false, failures: false, advance_rms_m: 0.5}
+  - {name: calm_all,    layouts: all,  wind: calm,   randomize: false, failures: false, advance_rms_m: 0.6}
+  - {name: steady_wind, layouts: all,  wind: steady, randomize: false, failures: false, advance_rms_m: 0.8}
+  - {name: full,        layouts: all,  wind: full,   randomize: true,  failures: true,  advance_rms_m: null}
+
+ppo:
+  n_envs: 4
+  total_steps: 5000000
+  n_steps: 1024                  # per env per update
+  batch_size: 1024
+  n_epochs: 10
+  learning_rate: 3.0e-4
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.0
+  net_arch: [256, 256]
+  activation: tanh
+  seeds: [0, 1, 2, 3, 4]
