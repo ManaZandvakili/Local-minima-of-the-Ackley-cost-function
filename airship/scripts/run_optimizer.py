@@ -63,6 +63,7 @@ def run_seed(args):
              "positions_m": r["eval"].positions_m, "directions": r["eval"].directions,
              "objectives": r["eval"].objectives, "axis_capacity": r["eval"].axis_capacity,
              "shortfall": r["eval"].shortfall, "gate": r["eval"].gate,
+             "excess_props": r["eval"].excess_props,
              "convergence": r["convergence"], "n_evals": r["n_evals"]} for r in trials]
     with open(Path(run_dir) / f"seed{seed}.pkl", "wb") as fh:
         pickle.dump({"seed": seed, "trials": rows, "seconds": time.time() - t0}, fh)
@@ -99,7 +100,8 @@ def summarize(run_dir, opt):
 
     for seed in seeds:
         data = pickle.load(open(run_dir / f"seed{seed}.pkl", "rb"))
-        trials = [t for t in data["trials"] if not t["gate"] and t["shortfall"] == 0.0]
+        trials = [t for t in data["trials"]
+                  if not t["gate"] and t["shortfall"] == 0.0 and t.get("excess_props", 0) == 0]
         objs = [t["objectives"] for t in trials]
         pidx = pareto_filter(pareto_points(objs))
         knee = pidx[knee_index(pareto_points(objs)[pidx])]
@@ -187,7 +189,8 @@ def write_report(run_dir, opt, s, per_seed, rows, chosen, rand_info, refs):
     L = []
     L.append(f"# Phase 1 optimizer run `{run_dir.name}`\n")
     L.append(f"Sphere, K = {opt['K_candidates']}, {len(per_seed)} seeds x {opt['trials_per_seed']} trials, "
-             f"push-only thrust 0-{s['u_max']:g} N per propeller.\n")
+             f"push-only thrust 0-{s['u_max']:g} N per propeller"
+             + (f", at most {opt['pso']['max_props']} propellers" if opt['pso'].get('max_props') else "") + ".\n")
     L.append("## Per seed\n")
     L.append("| Seed | Feasible trials | Pareto layouts | Knee N | Paper-pick N | Minutes |")
     L.append("|---|---|---|---|---|---|")
@@ -231,6 +234,7 @@ def main():
     ap.add_argument("--seeds", type=int, nargs="*")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--summarize", help="only (re)build the summary of an existing run folder")
+    ap.add_argument("--max-props", type=int, help="cap the number of propellers (graded penalty above it)")
     a = ap.parse_args()
     opt = load_config(a.config)
     if a.summarize:
@@ -238,7 +242,11 @@ def main():
         return
     if a.seeds:
         opt["seeds"] = a.seeds
-    run_dir = ROOT / "results" / "runs" / f"phase1_{datetime.now():%Y%m%d_%H%M%S}"
+    tag = ""
+    if a.max_props:
+        opt["pso"]["max_props"] = a.max_props
+        tag = f"_maxN{a.max_props}"
+    run_dir = ROOT / "results" / "runs" / f"phase1{tag}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True)
     yaml.safe_dump({"optimizer": opt, "hull": load_config(opt["hull_config"])}, open(run_dir / "config.yaml", "w"))
     print(f"run folder: {run_dir}", flush=True)

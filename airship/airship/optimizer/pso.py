@@ -42,6 +42,7 @@ class PSOConfig:
     penalty_feasibility: float = 1e4
     cond_threshold: float = 100.0
     dof_weights: tuple = (2.0, 2.0, 0.3, 0.3, 0.3, 2.0)
+    max_props: int | None = None         # optional cap on N (e.g. what the lift can carry); graded penalty
 
     @classmethod
     def from_config(cls, d):
@@ -60,6 +61,7 @@ class Evaluation:
     objectives: dict = field(default_factory=dict)
     axis_capacity: np.ndarray | None = None
     shortfall: float = np.inf
+    excess_props: int = 0                # propellers above cfg.max_props
     gate: str = ""                       # "" or the reason the layout was rejected outright
 
 
@@ -110,7 +112,9 @@ class LayoutPSO:
         caps = axis_capacities(build_M(p, d), 0.0, self.u_max)
         sf = shortfall(caps, self.req)
         score += self.cfg.penalty_feasibility * sf + conditioning_penalty(obj["cond"], self.cfg.cond_threshold)
-        return Evaluation(score, mask, p, d, obj, caps, sf)
+        excess = max(0, p.shape[0] - self.cfg.max_props) if self.cfg.max_props else 0
+        score += self.cfg.penalty_feasibility * excess
+        return Evaluation(score, mask, p, d, obj, caps, sf, excess)
 
     def _update(self, i):
         ev = self.evaluate(self.X[i])

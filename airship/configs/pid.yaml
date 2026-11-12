@@ -1,0 +1,56 @@
+# Phase 3: PID baseline and its per-layout tuning. Identical for every layout.
+allocation:
+  W: [2.0, 2.0, 1.0, 0.5, 0.5, 2.0]     # Fx Fy Fz Mx My Mz priorities (brief)
+  eps: 1.0e-8
+
+tuning:
+  swarm: 12                # Final.py tune_pd_gains settings
+  iters: 30
+  w: 0.7
+  c1: 1.5
+  c2: 1.5
+  vmax_frac: 0.2
+  conv_tol: 1.0e-3
+  conv_window: 20
+  w_pos: 5.0               # paper J_tune: 5 * RMS tracking error
+  w_yaw: 1.0               # added: the 6-DOF controller also tunes yaw
+  w_effort: 1.0e-3         # paper J_tune: 0.001 * integral of u'u dt
+  divergence_penalty: 1000.0
+  seed: 17
+  bounds:                  # gains are accelerations per unit error (scaled by mass / inertia)
+    kp_xy:  [0.05, 1.5]
+    ki_xy:  [0.0, 0.3]
+    kd_xy:  [0.2, 3.0]
+    kp_z:   [0.05, 1.5]
+    ki_z:   [0.0, 0.3]
+    kd_z:   [0.2, 3.0]
+    kp_rp:  [0.0, 4.0]
+    kd_rp:  [0.0, 4.0]
+    kp_yaw: [0.05, 2.0]
+    ki_yaw: [0.0, 0.5]
+    kd_yaw: [0.2, 3.0]
+
+tuning_scenario:           # brief: a fixed mild-wind scenario (not zero wind), so the integral gains get tuned
+  name: tuning
+  duration_s: 60.0
+  wind:
+    mean_speed_m_s: 1.5
+    mean_dir_deg: 30.0
+    turbulence_sigma_m_s: [0.2, 0.2, 0.1]
+    turbulence_tau_s: 2.0
+    gust_rate_per_min: 0.0
+  wind_seed: 17
+  init_pos: [1.0, -1.0, 0.5]
+  init_rpy_deg: [0.0, 0.0, 0.0]
+  yaw_ref_deg: 0.0
+  yaw_step_time_s: 30.0
+  yaw_step_to_deg: 45.0
+
+acceptance_scenario:       # brief: hold station in 2 m/s steady wind, RMS position error < 0.5 m
+  name: acceptance_2ms
+  duration_s: 60.0
+  wind:
+    mean_speed_m_s: 2.0
+    mean_dir_deg: 0.0
+    turbulence_sigma_m_s: [0.0, 0.0, 0.0]
+  wind_seed: 1
