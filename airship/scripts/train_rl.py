@@ -36,12 +36,13 @@ from stable_baselines3.common.vec_env import DummyVecEnv, SubprocVecEnv, VecMoni
 from airship.config import load_config                              # noqa: E402
 from airship.dynamics import DynamicsParams                         # noqa: E402
 from airship.envs.station_keeping import StationKeepingEnv          # noqa: E402
+from airship.residual import GainsBook                              # noqa: E402
 from airship.training_layouts import build_pool                     # noqa: E402
 
 
-def make_env(pool, cfg, params, stage, seed):
+def make_env(pool, cfg, params, stage, seed, book=None):
     def _f():
-        return StationKeepingEnv(pool, cfg, params, stage=stage, seed=seed)
+        return StationKeepingEnv(pool, cfg, params, stage=stage, seed=seed, gains_book=book)
     return _f
 
 
@@ -97,8 +98,18 @@ def main():
     ap.add_argument("--steps", type=int, help="override total steps")
     ap.add_argument("--n-envs", type=int)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--residual", action="store_true", help="residual RL on top of the tuned PID")
+    ap.add_argument("--pid-run", help="tuned PID gains folder (residual mode)")
+    ap.add_argument("--layout-runs", nargs="*", help="optimizer layout folders (override the config)")
     a = ap.parse_args()
     cfg = load_config("train_rl")
+    if a.residual:
+        cfg["residual"]["enabled"] = True
+        a.tag = a.tag or "_residual"
+    if a.pid_run:
+        cfg["residual"]["pid_run"] = a.pid_run
+    if a.layout_runs:
+        cfg["layouts"]["pareto_runs"] = cfg["layouts"]["random_runs"] = list(a.layout_runs)
     pc = cfg["ppo"]
     n_envs = a.n_envs or pc["n_envs"]
     total = a.steps or pc["total_steps"]
@@ -116,8 +127,9 @@ def main():
                     "total_steps": total, "pool": pool.summary()}, open(out / "config.yaml", "w"))
 
     stages = cfg["curriculum"]
+    book = GainsBook(ROOT / cfg["residual"]["pid_run"]) if cfg["residual"]["enabled"] else None
     VecCls = SubprocVecEnv if pc.get("vec_env", "subproc") == "subproc" else DummyVecEnv
-    venv = VecCls([make_env(pool, cfg, params, stages[0], a.seed * 1000 + i) for i in range(n_envs)])
+    venv = VecCls([make_env(pool, cfg, params, stages[0], a.seed * 1000 + i, book) for i in range(n_envs)])
     venv = VecNormalize(VecMonitor(venv), norm_obs=True, norm_reward=True, gamma=pc["gamma"])
     act = {"tanh": torch.nn.Tanh, "relu": torch.nn.ReLU}[pc["activation"]]
     model = PPO("MlpPolicy", venv, n_steps=pc["n_steps"], batch_size=pc["batch_size"], n_epochs=pc["n_epochs"],

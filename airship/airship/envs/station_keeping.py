@@ -6,6 +6,10 @@ command changes once per episode at a random time.
 Action: 6 numbers in [-1, 1] -> body-frame wrench (scaled per axis) -> the
 same bounded allocation as the PID -> propeller thrust commands.
 
+Residual mode (configs/train_rl.yaml residual.enabled): the action is a
+correction added to the layout's tuned PID wrench, wrench = PID + scale * action,
+and the observation also contains the PID wrench (47 numbers).
+
 Observation (body frame, normalised; 41 numbers):
     position error (3), linear velocity (3), gravity direction (3),
     yaw error as sin/cos (2), angular velocity (3), clipped integral of the
@@ -31,21 +35,22 @@ def _wrap(a):
     return (a + np.pi) % (2 * np.pi) - np.pi
 
 
-def make_obs(p, v, w, R, yaw_ref, integral, a_prev, gap, caps, env_cfg, scale):
-    """The 41-number observation (shared by the env and the RL controller wrapper)."""
+def make_obs(p, v, w, R, yaw_ref, integral, a_prev, gap, caps, env_cfg, scale, extra=None):
+    """The 41-number observation (shared by the env and the RL controller wrapper);
+    `extra` (the PID wrench / scale in residual mode) is appended."""
     yaw = np.arctan2(R[1, 0], R[0, 0])
     ey = _wrap(yaw_ref - yaw)
     return np.concatenate([
         R.T @ (-p) / env_cfg["pos_scale_m"], v / env_cfg["vel_scale_m_s"], R.T @ np.array([0.0, 0.0, -1.0]),
         [np.sin(ey), np.cos(ey)], w / env_cfg["rate_scale_rad_s"],
         R.T @ integral / env_cfg["integral_clip_m_s"], a_prev, gap / scale,
-        caps / np.repeat(scale, 2)]).astype(np.float32)
+        caps / np.repeat(scale, 2)] + ([] if extra is None else [extra])).astype(np.float32)
 
 
 class StationKeepingEnv(gym.Env):
     metadata = {"render_modes": []}
 
-    def __init__(self, pool, cfg, params, stage=None, seed=0, eval_layouts=None, fixed=None):
+    def __init__(self, pool, cfg, params, stage=None, seed=0, eval_layouts=None, fixed=None, gains_book=None):
         """pool: LayoutPool; cfg: configs/train_rl.yaml; params: nominal DynamicsParams.
 
         stage: curriculum stage dict (layouts / wind / randomize / failures).
@@ -62,7 +67,14 @@ class StationKeepingEnv(gym.Env):
         self.eval_layouts, self.fixed = eval_layouts, fixed or {}
         self.rng = np.random.default_rng(seed)
         self.action_space = gym.spaces.Box(-1.0, 1.0, shape=(6,), dtype=np.float32)
-        self.observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(OBS_DIM,), dtype=np.float32)
+        rcfg = cfg.get("residual", {}) or {}
+        self.residual = bool(rcfg.get("enabled", False))
+        self.res_scale = np.asarray(rcfg.get("scale", [0.0] * 6), dtype=float)
+        self.gains_book = gains_book
+        if self.residual and gains_book is None:
+            raise ValueError("residual mode needs a GainsBook (tuned PID gains)")
+        dim = OBS_DIM + (6 if self.residual else 0)
+        self.observation_space = gym.spaces.Box(-np.inf, np.inf, shape=(dim,), dtype=np.float32)
         self.sim = None
 
     # ── curriculum hook (called through VecEnv.env_method) ─────────────
@@ -147,6 +159,11 @@ class StationKeepingEnv(gym.Env):
         self.gap = np.zeros(6)
         self.stats = {"pos2": 0.0, "yaw2": 0.0, "effort": 0.0, "sat": 0.0, "gap": 0.0}
         self.terms = {}
+        self.pid_w = np.zeros(6)
+        if self.residual:
+            from ..controllers.tuning import make_pid
+            self.pid = make_pid(self.gains_book.for_layout(self.layout.name), self.p0, e["control_hz"])
+            self.pid.reset()
         return self._obs(), {}
 
     # ── observation ────────────────────────────────────────────────────
@@ -161,7 +178,8 @@ class StationKeepingEnv(gym.Env):
             w += self.rng.normal(scale=n["rate_rad_s"], size=3)
             dth = self.rng.normal(scale=n["att_rad"], size=3)
             R = R @ np.array([[1, -dth[2], dth[1]], [dth[2], 1, -dth[0]], [-dth[1], dth[0], 1]])
-        return make_obs(p, v, w, R, self.yaw_ref, self.integral, self.a_prev, self.gap, self.caps, e, self.scale)
+        return make_obs(p, v, w, R, self.yaw_ref, self.integral, self.a_prev, self.gap, self.caps, e, self.scale,
+                        self.pid_w / self.scale if self.residual else None)
 
     # ── step ───────────────────────────────────────────────────────────
     def step(self, action):
@@ -174,15 +192,21 @@ class StationKeepingEnv(gym.Env):
             a_used = self.a_filt
         else:
             a_used = a
-        wrench = a_used * self.scale
-        applied = self.wrench_prev if self.delay else wrench
-        self.wrench_prev = wrench
         if self.fail_step is not None and self.k == self.fail_step:
             self.sim.fail_prop(self.fail_prop)
             self.alloc.set_bounds(self.sim.u_lo, self.sim.u_hi)
         if self.k == self.yaw_change_step:
             self.yaw_ref = self.yaw_new
+        if self.residual:
+            self.pid_w = self.pid.act(self.sim.x, np.zeros(3), self.yaw_ref)
+            wrench = self.pid_w + a_used * self.res_scale
+        else:
+            wrench = a_used * self.scale
+        applied = self.wrench_prev if self.delay else wrench
+        self.wrench_prev = wrench
         res = self.alloc.solve(applied)
+        if self.residual:
+            self.pid.notify(res)
         x = self.sim.step(res.u)
         self.k += 1
         self.gap = res.achieved - applied

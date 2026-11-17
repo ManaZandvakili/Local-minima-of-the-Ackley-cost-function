@@ -17,6 +17,14 @@ def load_config(name_or_path="sphere"):
     return yaml.safe_load(p.read_text())
 
 
+def thrust_bounds(cfg):
+    """(u_min, u_max) per propeller from configs/sphere.yaml['propulsion']."""
+    p = cfg["propulsion"]
+    u_max = float(p["u_max_N"])
+    u_min = -float(p.get("reverse_thrust_frac", 1.0)) * u_max if p.get("reverse_thrust", False) else 0.0
+    return u_min, u_max
+
+
 def hull_from_config(cfg):
     h = cfg["hull"]
     if h["shape"] == "sphere":

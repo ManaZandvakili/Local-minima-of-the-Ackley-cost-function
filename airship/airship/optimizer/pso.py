@@ -70,11 +70,12 @@ def _sph(theta, phi):
 
 
 class LayoutPSO:
-    def __init__(self, hull, candidates_m, weights, cfg, req, u_max, rules, seed):
+    def __init__(self, hull, candidates_m, weights, cfg, req, u_max, rules, seed, u_min=0.0):
         self.hull, self.P, self.cfg, self.req, self.rules = hull, np.asarray(candidates_m), cfg, req, rules
         self.K = self.P.shape[0]
         self.normals = hull.normals(self.P)
         self.u_max = float(u_max)
+        self.u_min = float(u_min)                 # 0 = push-only, negative = reversible
         self.w = np.asarray(weights, dtype=float)
         if self.w.shape != (len(OBJECTIVES),):
             raise ValueError(f"need one weight per objective {OBJECTIVES}")
@@ -109,7 +110,7 @@ class LayoutPSO:
             return Evaluation(self.cfg.penalty_inactive, mask, p, d, gate="gondola direction")
         obj = evaluate_objectives(p, d, self.hull, self.K, self.cfg.dof_weights, self.rules)
         score = float(np.dot(self.w, [obj[k] for k in OBJECTIVES]))
-        caps = axis_capacities(build_M(p, d), 0.0, self.u_max)
+        caps = axis_capacities(build_M(p, d), self.u_min, self.u_max)
         sf = shortfall(caps, self.req)
         score += self.cfg.penalty_feasibility * sf + conditioning_penalty(obj["cond"], self.cfg.cond_threshold)
         excess = max(0, p.shape[0] - self.cfg.max_props) if self.cfg.max_props else 0
@@ -149,14 +150,14 @@ def trial_weights(num_trials, rng):
     return rng.dirichlet(np.full(len(OBJECTIVES), 0.5), size=num_trials)
 
 
-def run_trials(hull, candidates_m, cfg, req, u_max, rules, num_trials, seed, log=print):
+def run_trials(hull, candidates_m, cfg, req, u_max, rules, num_trials, seed, log=print, u_min=0.0):
     """num_trials PSO runs with seeded weights; returns one dict per trial."""
     ss = np.random.SeedSequence(seed)
     w_rng, *trial_ss = [np.random.default_rng(s) for s in ss.spawn(num_trials + 1)]
     W = trial_weights(num_trials, w_rng)
     out = []
     for t in range(num_trials):
-        pso = LayoutPSO(hull, candidates_m, W[t], cfg, req, u_max, rules, seed=trial_ss[t])
+        pso = LayoutPSO(hull, candidates_m, W[t], cfg, req, u_max, rules, seed=trial_ss[t], u_min=u_min)
         ev, conv = pso.run()
         out.append({"trial": t, "weights": W[t], "eval": ev, "convergence": conv, "n_evals": pso.n_evals})
         log(f"  seed {seed} trial {t + 1}/{num_trials}: N={ev.positions_m.shape[0]} "

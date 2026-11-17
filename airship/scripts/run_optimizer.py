@@ -1,4 +1,4 @@
-"""Phase 1: run the push-only-aware layout optimizer on the sphere.
+"""Phase 1: run the bounded-thrust (push-only or reversible) layout optimizer on the sphere.
 
 For every seed: 20 PSO trials -> Pareto front (authority, effort, count) ->
 knee and paper-rule pick. Then, over all seeds: the overall knee and pick,
@@ -30,7 +30,7 @@ import yaml
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from airship.config import hull_from_config, load_config                   # noqa: E402
+from airship.config import hull_from_config, load_config, thrust_bounds                   # noqa: E402
 from airship.feasibility import AXIS_LABELS, Requirements, assess            # noqa: E402
 from airship.layouts import Layout, load, save                               # noqa: E402
 from airship.optimizer.objectives import OBJECTIVES, PAPER_KEYS, GeometricRules  # noqa: E402
@@ -47,8 +47,8 @@ def setup(opt):
     f = dict(opt["feasibility"])
     n_sampled, sample_seed = f.pop("n_sampled_directions"), f.pop("sample_seed")
     req = Requirements.from_config(f)
-    return dict(hull_cfg=hull_cfg, hull=hull, R=R, rules=rules, req=req,
-                u_max=float(hull_cfg["propulsion"]["u_max_N"]),
+    u_min, u_max = thrust_bounds(hull_cfg)
+    return dict(hull_cfg=hull_cfg, hull=hull, R=R, rules=rules, req=req, u_min=u_min, u_max=u_max,
                 cands=hull.candidate_points(opt["K_candidates"]),
                 cfg=PSOConfig.from_config(opt["pso"]), n_sampled=n_sampled, sample_seed=sample_seed)
 
@@ -58,7 +58,7 @@ def run_seed(args):
     s = setup(opt)
     t0 = time.time()
     trials = run_trials(s["hull"], s["cands"], s["cfg"], s["req"], s["u_max"], s["rules"],
-                        opt["trials_per_seed"], seed, log=lambda m: print(m, flush=True))
+                        opt["trials_per_seed"], seed, log=lambda m: print(m, flush=True), u_min=s["u_min"])
     rows = [{"trial": r["trial"], "weights": r["weights"].tolist(), "score": r["eval"].score,
              "positions_m": r["eval"].positions_m, "directions": r["eval"].directions,
              "objectives": r["eval"].objectives, "axis_capacity": r["eval"].axis_capacity,
@@ -72,14 +72,14 @@ def run_seed(args):
 
 def make_layout(name, p, d, s, source, objectives, seed, notes):
     return Layout(name=name, shape=s["hull"].shape, semi_axes_m=s["hull"].semi_axes_m,
-                  positions_m=p, directions=d, u_max_N=s["u_max"], u_min_N=0.0, source=source,
+                  positions_m=p, directions=d, u_max_N=s["u_max"], u_min_N=s["u_min"], source=source,
                   objectives={PAPER_KEYS[k]: objectives[k] for k in OBJECTIVES} if objectives else {},
                   seed=seed, notes=notes)
 
 
 def full_check(s, p, d):
     from airship.wrench import build_M
-    return assess(build_M(p, d), 0.0, s["u_max"], s["req"], s["R"], s["n_sampled"], s["sample_seed"])
+    return assess(build_M(p, d), s["u_min"], s["u_max"], s["req"], s["R"], s["n_sampled"], s["sample_seed"])
 
 
 def summarize(run_dir, opt):
@@ -95,7 +95,8 @@ def summarize(run_dir, opt):
     def matched(n):
         if n not in random_cache:
             random_cache[n] = sample_matched(n, s["hull"], s["cands"], s["req"], s["u_max"], s["rules"],
-                                             n_target=sel["random_matched"], seed=sel["random_seed_offset"] + n)
+                                             n_target=sel["random_matched"], seed=sel["random_seed_offset"] + n,
+                                             u_min=s["u_min"])
         return random_cache[n]
 
     for seed in seeds:
@@ -189,7 +190,8 @@ def write_report(run_dir, opt, s, per_seed, rows, chosen, rand_info, refs):
     L = []
     L.append(f"# Phase 1 optimizer run `{run_dir.name}`\n")
     L.append(f"Sphere, K = {opt['K_candidates']}, {len(per_seed)} seeds x {opt['trials_per_seed']} trials, "
-             f"push-only thrust 0-{s['u_max']:g} N per propeller"
+             f"thrust {s['u_min']:g} to {s['u_max']:g} N per propeller"
+             f" ({'reversible' if s['u_min'] < 0 else 'push-only'})"
              + (f", at most {opt['pso']['max_props']} propellers" if opt['pso'].get('max_props') else "") + ".\n")
     L.append("## Per seed\n")
     L.append("| Seed | Feasible trials | Pareto layouts | Knee N | Paper-pick N | Minutes |")
@@ -242,10 +244,11 @@ def main():
         return
     if a.seeds:
         opt["seeds"] = a.seeds
-    tag = ""
+    u_min, _ = thrust_bounds(load_config(opt["hull_config"]))
+    tag = "_bidir" if u_min < 0 else ""
     if a.max_props:
         opt["pso"]["max_props"] = a.max_props
-        tag = f"_maxN{a.max_props}"
+        tag += f"_maxN{a.max_props}"
     run_dir = ROOT / "results" / "runs" / f"phase1{tag}_{datetime.now():%Y%m%d_%H%M%S}"
     run_dir.mkdir(parents=True)
     yaml.safe_dump({"optimizer": opt, "hull": load_config(opt["hull_config"])}, open(run_dir / "config.yaml", "w"))

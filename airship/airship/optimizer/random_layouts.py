@@ -10,12 +10,12 @@ from ..wrench import build_M
 
 
 def sample_matched(target_n, hull, candidates_m, req, u_max, rules, n_target=20,
-                   max_attempts=20000, seed=42):
+                   max_attempts=20000, seed=42, u_min=0.0):
     """Up to n_target random layouts with exactly target_n propellers.
 
     Each passes the same hard constraints as optimizer layouts: gondola position
     and direction gates, minimum spacing, and the capacity requirements with
-    0 <= u <= u_max. Returns a list of (positions_m, directions) and the number
+    u_min <= u <= u_max. Returns a list of (positions_m, directions) and the number
     of attempts used.
     """
     rng = np.random.default_rng(seed)
@@ -42,7 +42,7 @@ def sample_matched(target_n, hull, candidates_m, req, u_max, rules, n_target=20,
         d[np.sum(d * hull.normals(p), axis=1) < 0] *= -1
         if gondola_direction_violation(d).any():
             continue
-        if shortfall(axis_capacities(build_M(p, d), 0.0, u_max), req) > 0:
+        if shortfall(axis_capacities(build_M(p, d), u_min, u_max), req) > 0:
             continue
         out.append((p.copy(), d.copy()))
     return out, attempts

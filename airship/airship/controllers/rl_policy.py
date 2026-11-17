@@ -17,20 +17,29 @@ from ..envs.station_keeping import make_obs
 
 
 class RLController:
-    def __init__(self, model, obs_rms, env_cfg, layout_caps, clip_obs=10.0, epsilon=1e-8, dt=0.1):
+    def __init__(self, model, obs_rms, env_cfg, layout_caps, clip_obs=10.0, epsilon=1e-8, dt=0.1,
+                 base_pid=None, residual_scale=None):
+        """base_pid / residual_scale: residual mode, wrench = PID + residual_scale * action."""
         self.model, self.obs_rms, self.env_cfg = model, obs_rms, env_cfg
+        self.base = base_pid
+        self.res_scale = None if residual_scale is None else np.asarray(residual_scale, dtype=float)
         self.scale = np.asarray(env_cfg["action_scale"], dtype=float)
         self.caps = np.asarray(layout_caps, dtype=float)
         self.clip, self.eps, self.dt = clip_obs, epsilon, dt
         self.reset()
 
     @classmethod
-    def load(cls, run_dir, layout_caps, checkpoint_steps=None):
-        """Final model, or the checkpoint saved after `checkpoint_steps` training steps."""
+    def load(cls, run_dir, layout_caps, checkpoint_steps=None, base_pid=None):
+        """Final model, or the checkpoint saved after `checkpoint_steps` training steps.
+        Residual runs need base_pid (the layout's tuned PID controller)."""
         import yaml
         from stable_baselines3 import PPO
         run_dir = Path(run_dir)
         cfg = yaml.safe_load(open(run_dir / "config.yaml"))["train_rl"]
+        rcfg = cfg.get("residual", {}) or {}
+        residual = bool(rcfg.get("enabled", False))
+        if residual and base_pid is None:
+            raise ValueError(f"{run_dir.name} is a residual policy: pass base_pid")
         if checkpoint_steps is None:
             model_path, vn_path = run_dir / "model", run_dir / "vecnormalize.pkl"
         else:
@@ -40,9 +49,17 @@ class RLController:
         model = PPO.load(model_path, device="cpu")
         vn = pickle.load(open(vn_path, "rb"))
         return cls(model, vn.obs_rms, cfg["env"], layout_caps, clip_obs=vn.clip_obs, epsilon=vn.epsilon,
-                   dt=1.0 / cfg["env"]["control_hz"])
+                   dt=1.0 / cfg["env"]["control_hz"], base_pid=base_pid if residual else None,
+                   residual_scale=rcfg.get("scale") if residual else None)
+
+    @property
+    def is_residual(self):
+        return self.base is not None
 
     def reset(self):
+        if self.base is not None:
+            self.base.reset()
+        self.pid_w = np.zeros(6)
         self.integral = np.zeros(3)
         self.a_prev = np.zeros(6)
         self.gap = np.zeros(6)
@@ -50,6 +67,8 @@ class RLController:
 
     def notify(self, alloc):
         self.gap = -alloc.gap                         # achieved - requested, as in the environment
+        if self.base is not None:
+            self.base.notify(alloc)
 
     def act(self, x, p_ref, yaw_ref, **_):
         if not self.first:
@@ -57,9 +76,13 @@ class RLController:
                                     -self.env_cfg["integral_clip_m_s"], self.env_cfg["integral_clip_m_s"])
         self.first = False
         obs = make_obs(x[:3] - np.asarray(p_ref), x[7:10], x[10:13], quat_to_rot(x[3:7]), yaw_ref,
-                       self.integral, self.a_prev, self.gap, self.caps, self.env_cfg, self.scale)
+                       self.integral, self.a_prev, self.gap, self.caps, self.env_cfg, self.scale,
+                       self.pid_w / self.scale if self.base is not None else None)
         o = np.clip((obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.eps), -self.clip, self.clip)
         a, _ = self.model.predict(o.astype(np.float32), deterministic=True)
         a = np.clip(a, -1.0, 1.0)
         self.a_prev = a
+        if self.base is not None:
+            self.pid_w = self.base.act(x, p_ref, yaw_ref)
+            return self.pid_w + a * self.res_scale
         return a * self.scale

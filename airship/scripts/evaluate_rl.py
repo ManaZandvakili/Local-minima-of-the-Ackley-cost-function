@@ -55,7 +55,7 @@ def eval_layout(args):
     params = DynamicsParams.from_config(load_config("sphere"))
     lay = load(ROOT / layout_path)
     caps = axis_capacities(lay.M(), lay.u_min, lay.u_max)
-    rl = RLController.load(rl_dir, caps, ckpt)
+    rl = RLController.load(rl_dir, caps, ckpt, base_pid=make_pid(PIDGains(**gains), params))
     rows = []
     for sc in scenarios():
         for name, ctrl in (("PID", make_pid(PIDGains(**gains), params)), ("RL", rl)):
@@ -115,16 +115,24 @@ def videos(rl_dir, pid_dir, out_dir):
     def fly(lab, ctrl_name, scenario):
         lay = load(path(lab))
         ctrl = (make_pid(gains(lab), params) if ctrl_name == "PID"
-                else RLController.load(rl_dir, axis_capacities(lay.M(), lay.u_min, lay.u_max), CKPT))
+                else RLController.load(rl_dir, axis_capacities(lay.M(), lay.u_min, lay.u_max), CKPT,
+                                       base_pid=make_pid(gains(lab), params)))
         return run_episode(lay, params, ctrl, scenario, log=True)["log"], lay
 
     made = []
     a, la = fly("sphere_knee", "PID", sc); b, lb = fly("sphere_knee", "RL", sc)
     made.append(animate([(a, la, "PID - optimized layout (15)"), (b, lb, "RL - optimized layout (15)")],
                         Path(out_dir) / "pid_vs_rl_knee.mp4"))
-    a, la = fly("maxN11_sphere_knee", "RL", sc); b, lb = fly("maxN11_sphere_random_N9_00", "RL", sc)
-    made.append(animate([(a, la, "RL - optimized layout (9)"), (b, lb, "RL - random layout (9)")],
-                        Path(out_dir) / "optimized_vs_random_N9_rl.mp4"))
+    labels = sorted(f.stem for f in (Path(pid_dir) / "gains").glob("*.json"))
+    knees = [l for l in labels if l.endswith("sphere_knee") and l != "sphere_knee"] or ["sphere_knee"]
+    k = knees[0]
+    n = load(path(k)).n_props
+    prefix = k[: -len("sphere_knee")]
+    rand = [l for l in labels if l.startswith(f"{prefix}sphere_random_N{n}_")]
+    if rand:
+        a, la = fly(k, "RL", sc); b, lb = fly(rand[0], "RL", sc)
+        made.append(animate([(a, la, f"RL - optimized layout ({n})"), (b, lb, f"RL - random layout ({n})")],
+                            Path(out_dir) / f"optimized_vs_random_N{n}_rl.mp4"))
     fsc = Scenario.from_config({"name": "failure", "duration_s": 45.0,
                                 "wind": {"mean_speed_m_s": 2.0, "mean_dir_deg": 60.0,
                                          "turbulence_sigma_m_s": [0.3, 0.3, 0.15]},

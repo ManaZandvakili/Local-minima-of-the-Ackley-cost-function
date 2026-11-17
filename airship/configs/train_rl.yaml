@@ -74,6 +74,11 @@ curriculum:                      # advance when the mean episode RMS position er
   - {name: steady_wind, layouts: all,  wind: steady, randomize: false, failures: false, advance_rms_m: 1.2, max_steps: 1000000}
   - {name: full,        layouts: all,  wind: full,   randomize: true,  failures: true,  advance_rms_m: null}
 
+residual:                        # residual RL: wrench = tuned PID + scale * action (brief's fallback)
+  enabled: false                 # train_rl.py --residual turns it on
+  scale: [15.0, 15.0, 15.0, 15.0, 15.0, 15.0]   # N, N, N, N*m, N*m, N*m per unit action
+  pid_run: results/pid/20261112_030317          # tuned gains per layout (median gains for untuned ones)
+
 ppo:
   n_envs: 4
   total_steps: 5000000
