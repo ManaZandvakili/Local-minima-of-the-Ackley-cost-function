@@ -9,6 +9,7 @@ Outputs: <rl run>/eval/ with eval.csv, report.md, training_curves.png and videos
 import argparse
 import csv
 import json
+import re
 import sys
 from multiprocessing import Pool
 from pathlib import Path
@@ -67,10 +68,9 @@ def eval_layout(args):
 
 
 def group(label):
-    for key in ("maxN11_sphere_random_N9", "sphere_random_N15", "sphere_random_N22"):
-        if label.startswith(key):
-            return key
-    return label
+    """Matched random layouts (..._sphere_random_N<n>_<i>) are grouped; other layouts stand alone."""
+    m = re.match(r"(.*sphere_random_N\d+)_\d+$", label)
+    return m.group(1) if m else label
 
 
 def training_curves(rl_dir, out_png):
@@ -121,7 +121,8 @@ def videos(rl_dir, pid_dir, out_dir):
 
     made = []
     a, la = fly("sphere_knee", "PID", sc); b, lb = fly("sphere_knee", "RL", sc)
-    made.append(animate([(a, la, "PID - optimized layout (15)"), (b, lb, "RL - optimized layout (15)")],
+    made.append(animate([(a, la, f"PID - optimized layout ({la.n_props})"),
+                         (b, lb, f"RL - optimized layout ({lb.n_props})")],
                         Path(out_dir) / "pid_vs_rl_knee.mp4"))
     labels = sorted(f.stem for f in (Path(pid_dir) / "gains").glob("*.json"))
     knees = [l for l in labels if l.endswith("sphere_knee") and l != "sphere_knee"] or ["sphere_knee"]
