@@ -358,6 +358,101 @@ knee, the 8-prop capped knee and the STARLab set. RMS position error after the f
 Videos (`eval/` folder of each RL run): PID vs RL on the knee layout in gusty wind,
 optimized vs random 8-prop layouts flown by RL, and a motor failing mid-flight.
 
+## Case study: one-way vs reversible propellers
+
+The same full pipeline was run for both propeller types, so the two cases can be
+compared directly:
+
+| Step | One-way (push only, 0 to 12 N) | Reversible (-12 to +12 N) |
+|---|---|---|
+| Optimizer | `phase1_20261112_015323`, capped `phase1_maxN11_20261112_024218` | `phase1_bidir_20261117_145131`, capped `phase1_bidir_maxN11_20261117_151234` |
+| Reference layouts | `results/layouts/oneway/` (STARLab set left out: its 6 thrusters need reverse thrust) | `results/layouts/` |
+| PID tuning | `results/pid/20261117_203431` (65 layouts) | `results/pid/20261117_153423` (66 layouts) |
+| Residual RL | `results/rl/20261117_205532_oneway_residual_seed0` | `results/rl/20261117_155720_bidir_residual_seed0` |
+| Plain RL | `results/rl/20261117_205532_oneway_plain_seed0` | `results/rl/20261117_155720_bidir_plain_seed0` |
+
+Identical settings in both cases: optimizer, PID tuning procedure, RL curriculum,
+rewards and PPO budget (5 million steps, seed 0), and the same gusty evaluation
+(3 m/s mean wind from 3 directions, turbulence 0.5 m/s, gusts, 45° heading change).
+The one-way PID numbers reproduce the earlier Phase 3-4 evaluation exactly.
+
+Figures: `results/figures/case_study_rms.png` (RMS position error, log scale) and
+`results/figures/case_study_effort.png` (control effort), made by
+`scripts/case_study_figure.py`.
+
+### Optimized vs random layouts, same number of propellers
+
+RMS position error (optimized layout vs median of 20 matched random layouts) and the
+share of random layouts that kept control in all three wind directions:
+
+| Case | N | PID: optimized | PID: random | Residual RL: optimized | Residual RL: random | Random kept control |
+|---|---|---|---|---|---|---|
+| One-way | 9 | **1.02 m** | 4.69 m | **0.91 m** | 5.05 m | 32 % |
+| One-way | 15 | **0.36 m** | 0.51 m | **0.31 m** | 0.46 m | 85 % |
+| One-way | 22 | **0.29 m** | 0.36 m | 0.33 m | 0.34 m | 100 % |
+| Reversible | 8 | 0.33 m | 0.34 m | **0.25 m** | 0.30 m | 100 % |
+| Reversible | 14 | **0.29 m** | 0.36 m | **0.24 m** | 0.26 m | 100 % |
+| Reversible | 23 | 0.25 m | 0.26 m | 0.23 m | 0.22 m | 100 % |
+
+Control effort with the PID [N²s], optimized vs random median:
+
+| Case | N | Optimized | Random | Random saturation (tuning check) |
+|---|---|---|---|---|
+| One-way | 9 | 20,837 | 15,437* | 24 % |
+| One-way | 15 | 13,180 | 22,271 | 8 % |
+| One-way | 22 | 7,245 | 10,528 | 2 % |
+| Reversible | 8 | 7,516 | 25,021 | 15 % |
+| Reversible | 14 | 4,363 | 8,508 | 0.2 % |
+| Reversible | 23 | 2,907 | 3,786 | 0 % |
+
+\* Lower only because 68 % of these episodes ended early in a crash, so less thrust was
+used in total; it is not an efficiency gain.
+
+### Controllers in each case
+
+Median RMS position error over the layouts:
+
+| Case | Layouts | PID | Residual RL | Plain RL |
+|---|---|---|---|---|
+| One-way | held in | 0.499 m | **0.442 m** | 0.762 m |
+| One-way | held out (14) | **0.488 m** | 0.591 m | 1.025 m |
+| Reversible | held in | 0.318 m | **0.252 m** | 0.295 m |
+| Reversible | held out (14) | 0.283 m | **0.235 m** | 0.319 m |
+
+Motor failure (each propeller in turn fails at 15 s, 2 m/s wind): survivals, then
+RMS position error after the failure (median over which motor fails):
+
+| Case | Layout | PID | Residual RL | Plain RL |
+|---|---|---|---|---|
+| One-way | knee, 15 | 15/15, 0.089 m | 15/15, 0.059 m | 15/15, 0.125 m |
+| One-way | capped knee, 9 | 8/9, 0.088 m | 7/9, 0.175 m | 8/9, 0.428 m |
+| Reversible | knee, 14 | 14/14, 0.070 m | 14/14, 0.047 m | 14/14, 0.037 m |
+| Reversible | capped knee, 8 | 8/8, 0.071 m | 8/8, 0.052 m | 8/8, 0.031 m |
+
+### What the case study shows
+
+1. **With one-way propellers, the layout decides whether the airship can be
+   controlled at all.** At 9 propellers the optimized layout holds about 1 m in gusty
+   wind, while two in three random layouts lose control, with the PID and with RL
+   alike. No controller fixes a layout that cannot push in every direction. At 15
+   propellers 15 % of random layouts still lose control; only at 22 is every random
+   layout controllable.
+2. **With reversible propellers every layout can be controlled**, and the layout
+   mostly decides how efficiently: the optimized layouts reach similar or better
+   accuracy with up to 3.3× less effort and no saturation. With many propellers
+   (23) any layout is good enough.
+3. **The controller matters more when the hardware is good.** Residual RL improves on
+   the PID by about 20 % with reversible propellers, on seen and unseen layouts. With
+   one-way propellers the gain is smaller (about 10 % on training layouts), it does not
+   carry over to unseen layouts (0.59 vs 0.49 m), and on the 9-prop capped knee it
+   survived fewer motor failures than the PID (7/9 vs 8/9). Plain RL is worse than PID
+   in the one-way case.
+4. **The real airship sits between the two cases.** Real propellers usually give
+   50-80 % of their thrust in reverse. The closer they get to the reversible case, the
+   less the layout matters for controllability and the more it matters for efficiency.
+
+All numbers are seed 0; Phase 5 should repeat the RL runs with 5 seeds.
+
 ## Open questions
 
 **B. Maximum thrust per propeller.** No published thrust figure exists for the
