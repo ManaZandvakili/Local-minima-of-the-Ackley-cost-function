@@ -10,6 +10,7 @@ Outputs go to a new timestamped folder:
     results/pid/<timestamp>/summary.csv, report.md
 """
 import argparse
+import re
 import csv
 import json
 import sys
@@ -51,7 +52,7 @@ def layout_set(run_dir, capped_run=None):
     out = [(p.stem, p) for p in paths if p.exists()]
     if capped_run:
         c = Path(capped_run).resolve()
-        tag = c.name.split("_")[1]                       # e.g. "maxN11"
+        tag = re.search(r"_(maxN\d+)_", c.name).group(1)  # e.g. "maxN11" (also phase1_bidir_maxN11_...)
         knee = load(c / "sphere_knee.json")
         out.append((f"{tag}_sphere_knee", c / "sphere_knee.json"))
         out += [(f"{tag}_{p.stem}", p) for p in sorted(c.glob(f"sphere_random_N{knee.n_props}_*.json"))]

@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 os.environ.setdefault("MPLBACKEND", "Agg")
 
-from airship.config import hull_from_config, load_config      # noqa: E402
+from airship.config import hull_from_config, load_config, thrust_bounds  # noqa: E402
 from airship.geometry import Hull, gondola_direction_violation  # noqa: E402
 from airship.layouts import Layout, save                        # noqa: E402
 
@@ -27,7 +27,7 @@ OUT = ROOT / "results" / "layouts"
 NPZ_DIR = ROOT.parent                     # best_config_*.npz live at the repo root
 CFG = load_config("sphere")
 R = CFG["hull"]["diameter_m"] / 2.0
-U_MAX = CFG["propulsion"]["u_max_N"]
+U_MIN, U_MAX = thrust_bounds(CFG)
 SHAPES = {                                 # key: (shape, Final.py normalised params)
     "sphere": ("sphere", None),
     "cigar": ("ellipsoid", (1.0, 1.0, 2.5)),
@@ -68,7 +68,7 @@ def export_paper_layouts(final):
         hull = Hull(shape, tuple(abc))
         lay = Layout(
             name=f"{key}_paper_best", shape=shape, semi_axes_m=tuple(abc),
-            positions_m=pos_norm * R, directions=dirs, u_max_N=U_MAX, source="optimizer",
+            positions_m=pos_norm * R, directions=dirs, u_max_N=U_MAX, u_min_N=U_MIN, source="optimizer",
             objectives=paper_objectives(final, pos_norm, dirs, shape, params), seed=None,
             notes={
                 "origin": "Final.py PSO with the paper's cost (J6 on): best-authority Pareto layout, "

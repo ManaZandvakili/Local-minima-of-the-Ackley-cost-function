@@ -17,7 +17,7 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from airship.config import hull_from_config, load_config      # noqa: E402
+from airship.config import hull_from_config, load_config, thrust_bounds  # noqa: E402
 from airship.feasibility import Requirements, assess          # noqa: E402
 from airship.geometry import gondola_direction_violation, unit  # noqa: E402
 from airship.layouts import Layout, save                      # noqa: E402
@@ -25,7 +25,7 @@ from airship.layouts import Layout, save                      # noqa: E402
 CFG = load_config("sphere")
 HULL = hull_from_config(CFG)
 R = HULL.semi_axes_m[0]
-U_MAX = CFG["propulsion"]["u_max_N"]
+U_MIN, U_MAX = thrust_bounds(CFG)
 
 
 def tangent_dirs(p_hat, ccw, tilt_rad):
@@ -67,9 +67,9 @@ def first_feasible(make, tilts, name, note):
         p, d = make(t)
         if HULL.gondola_position_violation(p).any() or gondola_direction_violation(d).any():
             continue
-        L = Layout(name, "sphere", HULL.semi_axes_m, p, d, u_max_N=U_MAX, source="hand",
+        L = Layout(name, "sphere", HULL.semi_axes_m, p, d, u_max_N=U_MAX, u_min_N=U_MIN, source="hand",
                    notes={"design": note, "tilt_deg": float(t)})
-        fr = assess(L.M(), 0.0, U_MAX, req, R)
+        fr = assess(L.M(), 0.0, U_MAX, req, R)          # designed to work even push-only
         if fr.feasible:
             L = Layout.from_dict({**L.to_dict(), "notes": {**L.notes, "feasibility": fr.as_dict()}})
             print(f"{save(L, ROOT / 'results' / 'layouts' / f'{name}.json').relative_to(ROOT)}  "

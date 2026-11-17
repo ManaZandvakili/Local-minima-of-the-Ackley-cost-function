@@ -64,7 +64,7 @@ def test_rl_wrapper_matches_env():
     ctrl = RLController(pol, rms, CFG["env"], _pool().capability(LAY))
     res = run_episode(LAY, PARAMS, ctrl, sc, log=True)
     n = len(res["log"]["x"])                  # the random policy may crash the airship early
-    assert n >= 40
+    assert n >= 25                            # reversible thrust: the random policy crashes sooner
     np.testing.assert_allclose(res["log"]["x"][:, :3], np.array(xs)[:n], atol=1e-9)
 
 
@@ -99,7 +99,7 @@ def test_residual_wrapper_matches_env():
                         base_pid=make_pid(book.for_layout(LAY.name), PARAMS), residual_scale=[10.0] * 6)
     res = run_episode(LAY, PARAMS, ctrl, sc, log=True)
     n = len(res["log"]["x"])
-    assert n >= 40
+    assert n >= 25                            # reversible thrust: the random policy crashes sooner
     np.testing.assert_allclose(res["log"]["x"][:, :3], np.array(xs)[:n], atol=1e-9)
 
 
