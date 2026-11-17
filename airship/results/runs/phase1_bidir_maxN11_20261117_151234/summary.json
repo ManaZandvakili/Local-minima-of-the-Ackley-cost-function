@@ -1,0 +1,69 @@
+{
+  "per_seed": [
+    {
+      "seed": 0,
+      "n_feasible_trials": 20,
+      "n_trials": 20,
+      "pareto": 8,
+      "knee_N": 9,
+      "pick_N": 11,
+      "seconds": 745.4864821434021
+    },
+    {
+      "seed": 1,
+      "n_feasible_trials": 17,
+      "n_trials": 20,
+      "pareto": 9,
+      "knee_N": 9,
+      "pick_N": 11,
+      "seconds": 626.9719638824463
+    },
+    {
+      "seed": 2,
+      "n_feasible_trials": 20,
+      "n_trials": 20,
+      "pareto": 13,
+      "knee_N": 9,
+      "pick_N": 11,
+      "seconds": 699.3623895645142
+    },
+    {
+      "seed": 3,
+      "n_feasible_trials": 20,
+      "n_trials": 20,
+      "pareto": 7,
+      "knee_N": 10,
+      "pick_N": 11,
+      "seconds": 701.0479915142059
+    },
+    {
+      "seed": 4,
+      "n_feasible_trials": 19,
+      "n_trials": 20,
+      "pareto": 8,
+      "knee_N": 9,
+      "pick_N": 11,
+      "seconds": 651.2420647144318
+    }
+  ],
+  "random": [
+    {
+      "N": 8,
+      "matched_to": [
+        "sphere_knee"
+      ],
+      "count": 20,
+      "attempts": 32,
+      "capacity_min_N_median": 8.471206623487966
+    },
+    {
+      "N": 11,
+      "matched_to": [
+        "sphere_paper_pick"
+      ],
+      "count": 20,
+      "attempts": 60,
+      "capacity_min_N_median": 24.3846877453037
+    }
+  ]
+}
