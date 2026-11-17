@@ -37,7 +37,7 @@ CHECK_SCENARIO = {"name": "turbulent_3ms", "duration_s": 60.0,
                   "wind_seed": 101, "init_pos": [0.0, 0.0, 0.0]}
 
 
-def layout_set(run_dir, capped_run=None):
+def layout_set(run_dir, capped_run=None, ref_dir=None):
     """The layouts flown in Phases 3-5, as (label, path): chosen optimized layouts, the
     minimum-N Pareto layout, matched random layouts, the reference layouts, and
     optionally the knee of a capped-N run with its matched random layouts."""
@@ -47,8 +47,8 @@ def layout_set(run_dir, capped_run=None):
     min_n = min(pareto, key=lambda L: (L.n_props, L.objectives.get("J2_effort", 0)))
     paths.append(run_dir / f"{min_n.name}.json")
     paths += sorted(run_dir.glob("sphere_random_N*_*.json"))
-    paths += [ROOT / "results" / "layouts" / "sphere_paper_best.json",
-              ROOT / "results" / "layouts" / "sphere_starlab_6thruster.json"]
+    ref = Path(ref_dir).resolve() if ref_dir else ROOT / "results" / "layouts"
+    paths += [ref / "sphere_paper_best.json", ref / "sphere_starlab_6thruster.json"]   # missing ones skipped
     out = [(p.stem, p) for p in paths if p.exists()]
     if capped_run:
         c = Path(capped_run).resolve()
@@ -119,11 +119,13 @@ def report(out_dir, rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", help="phase-1 layout folder (results/layouts/phase1_...)")
+    ap.add_argument("--ref-dir", help="folder with the reference layouts (default results/layouts; "
+                                      "results/layouts/oneway for the push-only case)")
     ap.add_argument("--capped-run", help="optional capped-N layout folder (results/layouts/phase1_maxN.._...)")
     ap.add_argument("--layouts", nargs="*")
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args()
-    items = [(Path(p).stem, Path(p)) for p in a.layouts] if a.layouts else layout_set(a.run, a.capped_run)
+    items = [(Path(p).stem, Path(p)) for p in a.layouts] if a.layouts else layout_set(a.run, a.capped_run, a.ref_dir)
     out_dir = ROOT / "results" / "pid" / f"{datetime.now():%Y%m%d_%H%M%S}"
     (out_dir / "gains").mkdir(parents=True)
     yaml.safe_dump({"pid": load_config("pid"), "check_scenario": CHECK_SCENARIO,

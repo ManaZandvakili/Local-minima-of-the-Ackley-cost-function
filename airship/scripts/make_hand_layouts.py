@@ -7,8 +7,10 @@ might pick without an optimizer. Each passes the push-only feasibility test.
                          thrust tangent, alternately clockwise / counter-clockwise, tilted
 
 Usage (from the airship/ folder):
-    python scripts/make_hand_layouts.py
+    python scripts/make_hand_layouts.py            # thrust bounds from configs/sphere.yaml
+    python scripts/make_hand_layouts.py --oneway   # push-only copies -> results/layouts/oneway/
 """
+import argparse
 import sys
 from pathlib import Path
 
@@ -23,6 +25,7 @@ from airship.geometry import gondola_direction_violation, unit  # noqa: E402
 from airship.layouts import Layout, save                      # noqa: E402
 
 CFG = load_config("sphere")
+OUT = ROOT / "results" / "layouts"
 HULL = hull_from_config(CFG)
 R = HULL.semi_axes_m[0]
 U_MIN, U_MAX = thrust_bounds(CFG)
@@ -72,13 +75,18 @@ def first_feasible(make, tilts, name, note):
         fr = assess(L.M(), 0.0, U_MAX, req, R)          # designed to work even push-only
         if fr.feasible:
             L = Layout.from_dict({**L.to_dict(), "notes": {**L.notes, "feasibility": fr.as_dict()}})
-            print(f"{save(L, ROOT / 'results' / 'layouts' / f'{name}.json').relative_to(ROOT)}  "
+            print(f"{save(L, OUT / f'{name}.json').relative_to(ROOT)}  "
                   f"N={L.n_props} tilt={t} deg capacity min {fr.capacity_min_N:.2f} N")
             return L
     print(f"[warn] no feasible {name} for tilts {list(tilts)}")
 
 
 if __name__ == "__main__":
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--oneway", action="store_true")
+    if ap.parse_args().oneway:
+        U_MIN, OUT = 0.0, OUT / "oneway"
+        OUT.mkdir(parents=True, exist_ok=True)
     first_feasible(cube8, [35, 30, 40, 45, 25], "sphere_hand_cube8",
                    "8 props at the cube vertices, tangential thrust tilted alternately up/down")
     first_feasible(rings12, [30, 40, 45, 35, 25, 20, 50], "sphere_hand_rings12",

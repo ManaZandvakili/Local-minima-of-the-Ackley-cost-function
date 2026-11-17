@@ -101,6 +101,7 @@ def main():
     ap.add_argument("--residual", action="store_true", help="residual RL on top of the tuned PID")
     ap.add_argument("--pid-run", help="tuned PID gains folder (residual mode)")
     ap.add_argument("--layout-runs", nargs="*", help="optimizer layout folders (override the config)")
+    ap.add_argument("--ref-dir", help="reference/hand layout folder under results/layouts (e.g. oneway)")
     a = ap.parse_args()
     cfg = load_config("train_rl")
     if a.residual:
@@ -110,6 +111,8 @@ def main():
         cfg["residual"]["pid_run"] = a.pid_run
     if a.layout_runs:
         cfg["layouts"]["pareto_runs"] = cfg["layouts"]["random_runs"] = list(a.layout_runs)
+    if a.ref_dir:
+        cfg["layouts"]["reference_dir"] = a.ref_dir
     pc = cfg["ppo"]
     n_envs = a.n_envs or pc["n_envs"]
     total = a.steps or pc["total_steps"]

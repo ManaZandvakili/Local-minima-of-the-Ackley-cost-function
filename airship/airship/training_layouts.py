@@ -72,9 +72,11 @@ def build_pool(cfg):
         for k, i in enumerate(idx):
             (pool.holdout if k < n_hold else base_train).append(rand[i])
 
+    ref_dir = LAYOUT_DIR / lc.get("reference_dir", ".")
     for name in lc.get("include_references", []):
-        base_train.append(load(LAYOUT_DIR / f"{name}.json"))
-    base_train += [load(p) for p in sorted(LAYOUT_DIR.glob(lc.get("hand_designed_glob", "_none_")))]
+        if (ref_dir / f"{name}.json").exists():          # e.g. no STARLab set in the push-only case
+            base_train.append(load(ref_dir / f"{name}.json"))
+    base_train += [load(p) for p in sorted(ref_dir.glob(lc.get("hand_designed_glob", "_none_")))]
 
     pool.train = list(base_train)
     failures = []

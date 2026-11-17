@@ -56,6 +56,7 @@ randomization:                   # brief domain randomisation
 layouts:
   pareto_runs: [phase1_20261112_015323, phase1_maxN11_20261112_024218]
   random_runs: [phase1_20261112_015323, phase1_maxN11_20261112_024218]
+  reference_dir: .                # folder under results/layouts with the references (oneway = push-only case)
   include_references: [sphere_paper_best, sphere_starlab_6thruster]
   hand_designed_glob: sphere_hand_*.json
   perturbations_per_layout: 2

@@ -6,8 +6,12 @@
 2. The as-built STARLab 6-thruster set (forward, side and lift pairs, reversible).
 
 Usage (from the airship/ folder):
-    python scripts/export_reference_layouts.py
+    python scripts/export_reference_layouts.py            # thrust bounds from configs/sphere.yaml
+    python scripts/export_reference_layouts.py --oneway   # push-only copies -> results/layouts/oneway/
+                                                          # (case study; STARLab set skipped: it is
+                                                          # reversible hardware)
 """
+import argparse
 import importlib.util
 import os
 import sys
@@ -124,5 +128,13 @@ def export_starlab_6thruster():
 
 
 if __name__ == "__main__":
-    export_paper_layouts(load_final())
-    export_starlab_6thruster()
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--oneway", action="store_true", help="push-only copies in results/layouts/oneway/")
+    a = ap.parse_args()
+    if a.oneway:
+        U_MIN, OUT = 0.0, OUT / "oneway"
+        OUT.mkdir(parents=True, exist_ok=True)
+        export_paper_layouts(load_final())
+    else:
+        export_paper_layouts(load_final())
+        export_starlab_6thruster()
