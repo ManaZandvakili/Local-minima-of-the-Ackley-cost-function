@@ -7,7 +7,7 @@ units (metres, newtons, N·m). The conference-paper code is frozen in
 ## Setup
 
 ```bash
-pip install numpy scipy matplotlib pyyaml pytest
+pip install numpy scipy matplotlib pyyaml pytest numba gymnasium stable-baselines3 tensorboard
 cd airship
 python -m pytest -q                              # all tests
 ```
@@ -20,7 +20,7 @@ python -m pytest -q                              # all tests
 | 1 | One-way-thrust feasibility, reliable optimizer, multi-seed Pareto export | **done** |
 | 2 | 6-DOF sphere simulator | **done** |
 | 3 | Bounded allocation and PID baseline | **done** |
-| 4 | RL environment and training | **seed 0 trained; waiting for review** |
+| 4 | RL environment and training (plain and residual) | **seed 0 trained, reversible thrust; waiting for review** |
 | 5 | Experiments and paper outputs | — |
 
 ## Phase 0: what's here
@@ -117,6 +117,28 @@ python scripts/demo_simulator.py          # results/figures/phase2_demo.png
 
 ```bash
 python scripts/tune_pid.py --run results/layouts/phase1_20261112_015323 --workers 4   # ~15 min
+```
+
+## Phase 4: what's here
+
+| File | Purpose |
+|---|---|
+| `airship/training_layouts.py` | layout pool: Pareto, random, reference, hand-designed, perturbed and one-motor-failure layouts, with a held-out set |
+| `airship/envs/station_keeping.py` | Gymnasium station-keeping environment: the policy outputs a wrench (plain) or a correction added to the tuned PID's wrench (residual); curriculum, domain randomisation, failures, bounded reward terms |
+| `airship/residual.py` | `GainsBook`: tuned PID gains per layout for residual RL |
+| `airship/controllers/rl_policy.py` | `RLController`: a trained policy as a closed-loop controller |
+| `configs/train_rl.yaml` | environment, reward, wind, randomisation, layouts, curriculum, residual and PPO settings |
+| `scripts/train_rl.py` | PPO training (Stable-Baselines3) |
+| `scripts/evaluate_rl.py` | RL vs PID on gusty scenarios, training curves, videos |
+| `scripts/compare_failures.py` | each motor failing mid-flight, PID vs RL runs |
+
+Propellers are reversible by default (`propulsion.reverse_thrust` in `configs/sphere.yaml`).
+
+```bash
+python scripts/run_optimizer.py --workers 4                    # and --max-props 11 for the capped run
+python scripts/tune_pid.py --run results/layouts/<run> --capped-run results/layouts/<capped run>
+python scripts/train_rl.py --seed 0 --residual --pid-run results/pid/<run> --layout-runs <run> <capped run>
+python scripts/evaluate_rl.py --rl results/rl/<run> --pid results/pid/<run>
 ```
 
 Open questions and assumptions are tracked in `results/REPORT.md`.

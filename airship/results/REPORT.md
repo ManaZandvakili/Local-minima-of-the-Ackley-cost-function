@@ -245,6 +245,119 @@ Then 5 training seeds for whichever version is used.
 Videos (`eval/`): PID vs RL on the knee layout in gusty wind; optimized vs random
 9-prop layouts flown by RL; a motor failing mid-flight (PID vs RL).
 
+## Redo with reversible propellers, and residual RL
+
+**Why.** The motors on the STARLab airship spin both ways, so each propeller can push
+or pull. Everything above assumed push-only propellers (thrust from 0 to 12 N). The
+redo allows -12 to +12 N (`reverse_thrust: true` in `configs/sphere.yaml`; reverse
+thrust is assumed as strong as forward thrust, see open question G). All layouts were
+re-optimised, the PID re-tuned, and two RL versions trained. The push-only results
+above are kept for comparison.
+
+### Optimizer (runs `phase1_bidir_20261117_145131`, capped `phase1_bidir_maxN11_20261117_151234`)
+
+With reversible thrust a layout needs only 6 propellers (push-only needed 7), and every
+layout gets about twice the authority.
+
+| Layout | N | Capacity min (weakest direction) | Matched random median (20) |
+|---|---|---|---|
+| Knee (no cap) | 14 | 49.0 N | 31.8 N |
+| Paper-rule pick (no cap) | 23 | 77.0 N | 70.9 N |
+| Knee (N ≤ 11) | 8 | 24.0 N | 8.5 N |
+| Paper-rule pick (N ≤ 11) | 11 | 34.3 N | 24.4 N |
+
+Feasible trials: 96/100 (no cap). Pareto layouts: N 6-23 (median 12) without the cap,
+6-11 (median 9) with it. Under reversible thrust the conference-paper layout reaches
+48.3 N, the two hand-designed layouts 21.3 N (cube, 8) and 44.1 N (rings, 12). The
+STARLab 6-thruster set still has no roll authority: it relies on the low centre of
+gravity, which is enough in practice.
+
+### PID baseline (run `results/pid/20261117_153423`, 66 layouts)
+
+Same tuning procedure as before. Gusty check (3 m/s, turbulence 0.5 m/s, gusts):
+
+| Layout | N | RMS pos | Effort [N²s] | Saturation |
+|---|---|---|---|---|
+| Optimized knee | 14 | **0.23 m** | 4,553 | 0 % |
+| Random (median of 20) | 14 | 0.29 m | 7,274 | 0.2 % |
+| Optimized paper-rule pick | 23 | 0.20 m | 2,974 | 0 % |
+| Random (median of 20) | 23 | 0.20 m | 3,771 | 0 % |
+| Optimized capped knee | 8 | **0.26 m** | 8,088 | 0 % |
+| Random (median of 20) | 8 | 0.27 m | 21,815 | 15 % |
+| STARLab 6 thrusters | 6 | 0.28 m | 10,783 | 1.9 % |
+
+All 66 layouts pass. Reversible thrust makes every layout much easier to fly (the
+push-only capped knee, 9 props, had 1.02 m in the evaluation scenario; the reversible
+capped knee, 8 props, has 0.33 m). The optimized
+layouts still win, mainly on effort: at N = 8 the random layouts need 2.7× the
+effort and saturate 15 % of the time. At N = 23 the optimized and random layouts are
+about equal, as expected: with that many propellers any layout has plenty of authority.
+
+### RL: residual vs plain (seed 0, 5 million steps each, about 75 minutes)
+
+- **Plain RL** (`results/rl/20261117_155720_bidir_plain_seed0`): the policy outputs
+  the whole wrench (±50 N, ±50 N·m), as before.
+- **Residual RL** (`results/rl/20261117_155720_bidir_residual_seed0`): wrench =
+  tuned PID + 15 × action (±15 N, ±15 N·m correction). The PID uses each layout's
+  tuned gains (the median gains for layouts that were not tuned, mostly Pareto
+  layouts other than the knee). The policy also sees the PID's wrench.
+
+Same layout pool for both (660 training layouts, 21 held out), same curriculum, rewards
+and PPO settings. Both versions passed every curriculum stage on its target
+(full stage by about 310k steps) and finished training with 100 % survival.
+
+**Evaluation** (gusty station keeping: 3 m/s mean wind from 3 directions, turbulence
+0.5 m/s, gusts, 45° heading change, identical wind seeds; RMS position error, median over
+directions, then over layouts):
+
+| Layout group | N | PID | Residual RL | Plain RL |
+|---|---|---|---|---|
+| Optimized knee | 14 | 0.292 m | **0.235 m** | 0.264 m |
+| Random (20) | 14 | 0.364 m | 0.256 m | **0.232 m** |
+| Optimized paper-rule pick | 23 | 0.254 m | **0.227 m** | 0.333 m |
+| Random (20) | 23 | 0.256 m | **0.219 m** | 0.315 m |
+| Optimized capped knee | 8 | 0.330 m | 0.252 m | **0.238 m** |
+| Random (20) | 8 | 0.335 m | **0.299 m** | 0.361 m (1 crash in 60) |
+| Conference paper layout | 16 | 0.263 m | **0.224 m** | 0.260 m |
+| STARLab 6 thrusters | 6 | 0.368 m | **0.308 m** | 0.358 m |
+| **Held-in layouts (median)** | | 0.318 m | **0.252 m** | 0.295 m |
+| **Held-out layouts (14, median)** | | 0.283 m | **0.235 m** | 0.319 m |
+
+Effort: residual RL uses about 5 % more than PID; plain RL 5-25 % more.
+
+**Motor failure** (each propeller in turn fails at 15 s, 2 m/s wind; `eval/failures.md`
+in the residual run): every controller survives every single failure on the 14-prop
+knee, the 8-prop capped knee and the STARLab set. RMS position error after the failure
+(median over which motor fails):
+
+| Layout | PID | Residual RL | Plain RL |
+|---|---|---|---|
+| Optimized knee (14) | 0.070 m | 0.047 m | 0.037 m |
+| Optimized capped knee (8) | 0.071 m | 0.052 m | 0.031 m |
+| STARLab 6 thrusters | 0.079 m | 0.091 m | 0.289 m |
+
+**What this shows.**
+
+1. **Residual RL beats the PID on every layout group**, by 10-30 %, including the 14
+   layouts it never saw in training (0.235 vs 0.283 m). **The brief's acceptance test
+   is met** (held-in 0.252 vs 0.318 m).
+2. **Plain RL is not reliable.** It is best on some layouts and worse than PID on
+   others (the 23-prop layouts, the held-out layouts), and it lost one random 8-prop
+   layout. Residual RL keeps the PID's reliability and adds a consistent improvement.
+   Residual RL is the recommended controller.
+3. **The layout effect is smaller with reversible thrust.** With the PID and with
+   residual RL, the optimized knee still beats the random median at the same N
+   (PID 0.29 vs 0.36 m, residual RL 0.235 vs 0.256 m), and it needs much less effort
+   at small N. But the gap is smaller than with push-only propellers, where random
+   9-prop layouts often lost control. With plain RL the random 14-prop layouts were
+   even slightly better than the knee, so the layout comparison should be made with
+   the PID or residual RL.
+4. These are seed-0 results. Phase 5 should repeat residual RL with 5 seeds before the
+   numbers go in the paper.
+
+Videos (`eval/` folder of each RL run): PID vs RL on the knee layout in gusty wind,
+optimized vs random 8-prop layouts flown by RL, and a motor failing mid-flight.
+
 ## Open questions
 
 **B. Maximum thrust per propeller.** No published thrust figure exists for the
@@ -273,12 +386,17 @@ gusts up to 8.3 m/s (the brief suggested 0-4 m/s).
 paper, but the SFOC limits outdoor tests to a 20 m radius, so it can only be done
 in simulation. Station keeping, the primary task, fits inside the limits.
 
+**G. Reverse thrust.** The redo assumes a propeller pulls as hard as it pushes
+(-12 to +12 N). Real propellers are pitched for one direction and usually give less
+thrust in reverse (often 50-80 %). `reverse_thrust_frac` in `configs/sphere.yaml`
+sets this; a thrust-stand test in both directions would settle it.
+
 ## Assumptions in use
 
 All values are tagged in `configs/sphere.yaml` and `configs/optimizer.yaml`:
 air density 1.225 kg/m³, neutral-buoyancy trim (component positions above),
 rotational damping (linear 2, quadratic 5), OU turbulence 0.5/0.5/0.25 m/s with 2 s
-correlation time, 12 N hull-motor thrust (estimated),
+correlation time, 12 N hull-motor thrust (estimated; reversible, equal in reverse since the redo),
 6 N gondola-motor thrust (guess), 0.10 s motor time constant, capacity minima
 (1 N, 1 N·m yaw, 0.25 N·m roll/pitch), the 7-inch spacing rule, and the STARLab
 thruster geometry above.
