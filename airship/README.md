@@ -141,4 +141,10 @@ python scripts/train_rl.py --seed 0 --residual --pid-run results/pid/<run> --lay
 python scripts/evaluate_rl.py --rl results/rl/<run> --pid results/pid/<run>
 ```
 
+## MATLAB and Simulink
+
+`matlab/` holds the same simulator in MATLAB and a script that builds a Simulink
+model of it (`build_airship_simulink.m`); see `matlab/README.md`. Its data files
+come from `python scripts/export_matlab.py`.
+
 Open questions and assumptions are tracked in `results/REPORT.md`.
