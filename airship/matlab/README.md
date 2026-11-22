@@ -11,7 +11,8 @@ In MATLAB, go to this folder and run:
 
 ```matlab
 validate_against_python   % plain MATLAB: 4 checks, all should say PASS
-run_airship_simulink      % builds airship_sim.slx, replays the same flight in Simulink, plots it
+plot_reference_flight     % plain MATLAB: flies the reference flight and plots it (no Simulink needed)
+run_airship_simulink      % needs Simulink: builds airship_sim.slx, replays the same flight, plots it
 ```
 
 To build the Simulink model for another layout:
@@ -28,6 +29,7 @@ build_airship_simulink('knee9_oneway_capped')
 | `airship_rk4_step.m` | One 0.01 s step: clip the command, Runge-Kutta step, re-normalise the attitude, clip the motor thrusts |
 | `quat_to_rot.m` | Attitude quaternion to rotation matrix |
 | `airship_load.m` | Loads the physical model and one layout into the parameter struct `P` |
+| `plot_reference_flight.m` | Flies the recorded gusty flight in plain MATLAB and plots position, path, wind, thrusts and heading |
 | `run_airship.m` | Flies a list of thrust commands through the simulator in plain MATLAB |
 | `wind_model.m` | Mean wind + turbulence + gusts, same model as Python (MATLAB's own random numbers) |
 | `validate_against_python.m` | Replay of a Python flight, pendulum period, energy and wind checks |

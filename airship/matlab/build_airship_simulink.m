@@ -32,6 +32,11 @@ function mdl = build_airship_simulink(layout_name)
 if nargin < 1
     layout_name = 'knee14_reversible';
 end
+if isempty(ver('simulink'))
+    error('airship:noSimulink', ['Simulink is not installed in this MATLAB. Install it from ' ...
+          'Home > Add-Ons > Get Add-Ons (search "Simulink"), then run this again. ' ...
+          'Without Simulink, run plot_reference_flight to see the same flight in plain MATLAB.']);
+end
 here = fileparts(mfilename('fullpath'));
 addpath(here);
 mdl = 'airship_sim';
