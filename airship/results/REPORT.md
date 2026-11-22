@@ -492,9 +492,10 @@ Findings:
   the lap can be flown: the optimized 15-propeller layout completes every 3 m/s lap with the classic controller and
   residual learning, while the random 15-propeller layouts complete 5%. With reversible propellers everything
   flies at 14 propellers, but at 8 propellers only the optimized layout completes every lap (random: 37%).
-- Residual learning is the best controller in 7 of 8 optimized-layout rows, with no retraining for a moving
-  target (for example 0.236 to 0.160 m on the reversible knee). Plain learning is less reliable (one-way knee 33%
-  completed).
+- In 3 m/s wind, residual learning is the best controller on 5 of the 6 optimized layouts, with no retraining for
+  a moving target (for example 0.236 to 0.160 m on the reversible knee); the exception is the one-way 9-propeller
+  layout, which no controller can fly. At 1.5 m/s plain learning is slightly ahead on two reversible layouts, but
+  in 3 m/s it is the least reliable (one-way knee 33% completed).
 - Nine one-way propellers are too few for 3 m/s on the circle: even the optimized layout falls more than 3 m
   behind (but it survives longer than random layouts: 500 s vs about 156 s in the 0 deg video).
 - The STARLab 6-thruster layout cannot fly the circle in 3 m/s wind (2 to 2.6 m error); it completes at 1.5 m/s.
