@@ -53,7 +53,7 @@ def run_path_episode(layout, params, controller, path, wind_cfg, wind_seed, phys
     dt = 1.0 / control_hz
     n = int(round(path.duration_s * control_hz))
     err, yaw_err, tilt, effort, sat = (np.zeros(n) for _ in range(5))
-    rec = {"t": [], "x": [], "ref": [], "u": []} if log else None
+    rec = {"t": [], "x": [], "ref": [], "u": [], "wind": [], "yaw_ref": []} if log else None
     diverged = False
     for k in range(n):
         t = k * dt
@@ -73,6 +73,7 @@ def run_path_episode(layout, params, controller, path, wind_cfg, wind_seed, phys
         sat[k] = np.sum(res.saturated) / max(np.sum(live), 1)
         if log and k % control_hz == control_hz - 1:
             rec["t"].append(t + dt); rec["x"].append(x.copy()); rec["ref"].append(p_next); rec["u"].append(x[13:].copy())
+            rec["wind"].append(sim.last_wind.copy()); rec["yaw_ref"].append(path.ref(t + dt)[3])
         if not np.all(np.isfinite(x)) or err[k] > divergence_m or tilt[k] > max_tilt_deg:
             diverged = True
             n = k + 1

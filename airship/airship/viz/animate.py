@@ -42,7 +42,8 @@ class _Panel:
         ax, L, x = self.ax, self.L, self.log["x"][k]
         ax.cla()
         e = self.extent
-        ax.set_xlim(-e, e); ax.set_ylim(-e, e); ax.set_zlim(-e, e)
+        c0 = self.log["ref"][k] if "ref" in self.log else np.zeros(3)   # moving target (path following)
+        ax.set_xlim(c0[0] - e, c0[0] + e); ax.set_ylim(c0[1] - e, c0[1] + e); ax.set_zlim(c0[2] - e, c0[2] + e)
         ax.set_box_aspect((1, 1, 1))
         ax.set_xlabel("x [m]"); ax.set_ylabel("y [m]"); ax.set_zlabel("z [m]")
         p = x[:3]
@@ -77,12 +78,12 @@ class _Panel:
         # trail, target, wind
         tr = self.log["x"][max(0, k - self.trail):k + 1, :3]
         ax.plot(tr[:, 0], tr[:, 1], tr[:, 2], color="#1f4e9c", lw=1.2)
-        ax.scatter(0, 0, 0, color="green", marker="+", s=80)
+        ax.scatter(*c0, color="green", marker="+", s=80)
         w = self.log["wind"][k]
-        c = np.array([-0.85 * e, -0.85 * e, 0.85 * e])
+        c = c0 + np.array([-0.85 * e, -0.85 * e, 0.85 * e])
         ax.quiver(*c, *(w * 0.8), color="#2a9d8f", lw=2, arrow_length_ratio=0.2)
         roll, pitch, yaw = euler_from_quat(x[3:7])
-        err = np.linalg.norm(p)
+        err = np.linalg.norm(p - c0)
         yerr = np.degrees(self.log.get("yaw_ref", np.zeros(len(self.log["x"])))[k] - yaw)
         yerr = (yerr + 180) % 360 - 180
         ax.set_title(f"{self.title}\nt = {self.log['t'][k]:5.1f} s   |pos err| = {err:4.2f} m   "
@@ -111,3 +112,41 @@ def animate(runs, path, extent=4.0, stride=2, fps=10, dpi=90):
         anim.save(path, writer=animation.FFMpegWriter(fps=fps, bitrate=1800), dpi=dpi)
     plt.close(fig)
     return path
+
+
+def animate_path(runs, path, out, fps=20, extent=4.0, dpi=80):
+    """Path-following video. runs: list of (log, layout, title, colour), logs from
+    path_following.run_path_episode(..., log=True). Top: a close-up per run that moves
+    with the reference point; bottom: the whole circle from above with every track."""
+    import matplotlib.gridspec as gridspec
+    n = len(runs)
+    fig = plt.figure(figsize=(6.0 * n, 11.0))
+    gs = gridspec.GridSpec(2, n, height_ratios=[1.0, 0.9], figure=fig)
+    panels = [_Panel(fig.add_subplot(gs[0, i], projection="3d"), log, lay, title, extent, dt=log["t"][1] - log["t"][0])
+              for i, (log, lay, title, _) in enumerate(runs)]
+    top = fig.add_subplot(gs[1, :])
+    th = np.linspace(0, 2 * np.pi, 400)
+    frames = range(0, min(len(r[0]["x"]) for r in runs))
+
+    def update(k):
+        for pn in panels:
+            pn.draw(k)
+        top.cla()
+        top.plot(path.radius_m * np.sin(th), path.radius_m * (1 - np.cos(th)), "k--", lw=0.8, label="reference circle")
+        ref = runs[0][0]["ref"][k]
+        for log, _, title, col in runs:
+            xy = log["x"][:k + 1, :2]
+            top.plot(xy[:, 0], xy[:, 1], color=col, lw=1.4, label=title.split("\n")[0])
+            top.scatter(*xy[-1], color=col, s=30)
+        top.scatter(ref[0], ref[1], color="green", marker="+", s=120, zorder=5, label="target now")
+        top.set_aspect("equal"); top.grid(alpha=0.3)
+        top.set_xlabel("x [m]"); top.set_ylabel("y [m]")
+        top.legend(loc="center", fontsize=9)
+        top.set_title(f"Whole circle seen from above (radius {path.radius_m:.0f} m, {path.speed_m_s} m/s)  -  "
+                      f"t = {runs[0][0]['t'][k]:.0f} s", fontsize=10)
+        return []
+
+    anim = animation.FuncAnimation(fig, update, frames=frames, blit=False)
+    anim.save(str(out), writer=animation.FFMpegWriter(fps=fps, bitrate=2400), dpi=dpi)
+    plt.close(fig)
+    return str(out)
