@@ -48,3 +48,6 @@ title('Simulink (colour) vs Python (dotted)');
 subplot(2, 1, 2);
 plot(t, X(:, 14:end));
 ylabel('Thrust per propeller [N]'); xlabel('Time [s]'); grid on;
+
+fprintf('To watch the airship move in 3-D:  animate_airship(X, ref.t_x, P)\n');
+fprintf('To save it as a video:             animate_airship(X, ref.t_x, P, ''flight.mp4'')\n');

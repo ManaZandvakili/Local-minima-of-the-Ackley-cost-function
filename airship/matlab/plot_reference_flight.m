@@ -37,3 +37,5 @@ subplot(2, 2, 4);
 plot(t, X(:, 14:end)); hold on; yyaxis right; plot(t, rad2deg(yaw), 'k', 'LineWidth', 1.5);
 ylabel('Heading [deg]'); yyaxis left; ylabel('Thrust per propeller [N]');
 xlabel('Time [s]'); grid on; title('Propeller thrusts and heading');
+
+fprintf('To watch the airship move in 3-D:  animate_airship(X, t, P)\n');

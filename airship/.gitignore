@@ -3,6 +3,7 @@ results/*
 !results/layouts/
 !results/REPORT.md
 !results/figures/
+!results/videos/
 __pycache__/
 .pytest_cache/
 # keep each run's small text outputs (config, summary, report, per-seed trial results)
