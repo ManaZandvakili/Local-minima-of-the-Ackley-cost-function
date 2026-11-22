@@ -22,6 +22,10 @@ from datetime import datetime
 from multiprocessing import Pool
 from pathlib import Path
 
+# one thread per worker: the learning controllers are 7x faster than when the workers fight over cores
+for _v in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
+
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
