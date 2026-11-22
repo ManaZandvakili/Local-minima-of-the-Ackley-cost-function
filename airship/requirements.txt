@@ -1,0 +1,12 @@
+# Python 3.10 or newer (tested with Python 3.13 on Linux). Versions used for the paper:
+numpy==2.5.3
+scipy==1.18.1
+numba==0.68.1
+matplotlib==3.11.2
+PyYAML==6.0.3
+gymnasium==1.4.0
+stable-baselines3==2.9.2
+torch==2.15.0
+tensorboard==2.21.0
+pytest==9.2.0
+# videos (optional): ffmpeg on the system path

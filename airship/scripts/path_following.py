@@ -10,6 +10,8 @@ moving target, so they are used as they are).
 Usage (from the airship/ folder):
     python scripts/path_following.py --case reversible
     python scripts/path_following.py --case oneway
+    python scripts/path_following.py --case reversible --pid results/pid/<run> \
+        --residual results/rl/<residual run> --plain results/rl/<plain run>     # your own runs
 Writes results/path/<timestamp>_<case>/: eval.csv, report.md, path_<layout>.png
 (optimized knee and 9/8-propeller capped knee vs their 20 random layouts).
 To redo only the figures:  python scripts/path_following.py --case oneway --figures-only results/path/<folder>
@@ -71,8 +73,7 @@ def group(label):
 
 
 def job(args):
-    case, gfile = args
-    c = CASES[case]
+    c, gfile = args
     g = json.load(open(gfile))
     params = DynamicsParams.from_config(load_config("sphere"))
     lay = load(ROOT / g["path"])
@@ -151,8 +152,7 @@ def report(case, summ, out):
 
 def fly_logged(args):
     """3 m/s toward 0 deg with logs, every controller, one layout (for the figures)."""
-    case, gfile = args
-    c = CASES[case]
+    c, gfile = args
     g = json.load(open(gfile))
     params = DynamicsParams.from_config(load_config("sphere"))
     lay = load(ROOT / g["path"])
@@ -226,7 +226,7 @@ def figures(case, out, workers):
         prefix = "maxN11_" if lab.startswith("maxN11_") else ""
         want += [r for r in files if re.match(rf"^{prefix}sphere_random_N{ns[lab]}_\d+$", r)]
     with Pool(workers) as p:
-        curves = dict(p.map(fly_logged, [(case, str(files[lab])) for lab in want]))
+        curves = dict(p.map(fly_logged, [(c, str(files[lab])) for lab in want]))
     for opt in ("sphere_knee", "maxN11_sphere_knee"):
         if opt in curves:
             figure(case, opt, curves, out)
@@ -237,14 +237,20 @@ def main():
     ap.add_argument("--case", choices=list(CASES), required=True)
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--figures-only", metavar="DIR", help="redo only the figures in an existing results folder")
+    ap.add_argument("--pid", help="tuned PID folder (results/pid/<run>); default: the run listed in CASES")
+    ap.add_argument("--residual", help="residual learning run (results/rl/<run>); default: CASES")
+    ap.add_argument("--plain", help="plain learning run (results/rl/<run>); default: CASES")
     a = ap.parse_args()
+    for k in ("pid", "residual", "plain"):
+        if getattr(a, k):
+            CASES[a.case][k] = Path(getattr(a, k)).resolve()
     c = CASES[a.case]
     if a.figures_only:
         figures(a.case, Path(a.figures_only), a.workers)
         return
     out = ROOT / "results" / "path" / f"{datetime.now():%Y%m%d_%H%M%S}_{a.case}"
     out.mkdir(parents=True)
-    jobs = [(a.case, str(f)) for f in sorted((c["pid"] / "gains").glob("*.json"))]
+    jobs = [(c, str(f)) for f in sorted((c["pid"] / "gains").glob("*.json"))]
     with Pool(a.workers) as p:
         res = p.map(job, jobs)
     rows = [r for rs in res for r in rs]
