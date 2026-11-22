@@ -70,12 +70,20 @@ class RLController:
         if self.base is not None:
             self.base.notify(alloc)
 
-    def act(self, x, p_ref, yaw_ref, **_):
+    def act(self, x, p_ref, yaw_ref, v_ref=None, a_ref=None, yaw_rate_ref=0.0, **_):
+        """Wrench for state x. With a moving reference (path following) the policy sees its
+        velocity and turn rate relative to the reference, as for a fixed target in training;
+        the base PID (residual mode) gets the full reference."""
+        v_ref = np.zeros(3) if v_ref is None else np.asarray(v_ref, dtype=float)
+        a_ref = np.zeros(3) if a_ref is None else np.asarray(a_ref, dtype=float)
         if not self.first:
             self.integral = np.clip(self.integral + (np.asarray(p_ref) - x[:3]) * self.dt,
                                     -self.env_cfg["integral_clip_m_s"], self.env_cfg["integral_clip_m_s"])
         self.first = False
-        obs = make_obs(x[:3] - np.asarray(p_ref), x[7:10], x[10:13], quat_to_rot(x[3:7]), yaw_ref,
+        R = quat_to_rot(x[3:7])
+        v_rel = x[7:10] - R.T @ v_ref
+        w_rel = x[10:13] - R.T @ np.array([0.0, 0.0, yaw_rate_ref])
+        obs = make_obs(x[:3] - np.asarray(p_ref), v_rel, w_rel, R, yaw_ref,
                        self.integral, self.a_prev, self.gap, self.caps, self.env_cfg, self.scale,
                        self.pid_w / self.scale if self.base is not None else None)
         o = np.clip((obs - self.obs_rms.mean) / np.sqrt(self.obs_rms.var + self.eps), -self.clip, self.clip)
@@ -83,6 +91,6 @@ class RLController:
         a = np.clip(a, -1.0, 1.0)
         self.a_prev = a
         if self.base is not None:
-            self.pid_w = self.base.act(x, p_ref, yaw_ref)
+            self.pid_w = self.base.act(x, p_ref, yaw_ref, v_ref=v_ref, a_ref=a_ref, yaw_rate_ref=yaw_rate_ref)
             return self.pid_w + a * self.res_scale
         return a * self.scale
