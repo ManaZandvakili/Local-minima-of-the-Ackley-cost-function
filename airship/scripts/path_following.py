@@ -10,7 +10,9 @@ moving target, so they are used as they are).
 Usage (from the airship/ folder):
     python scripts/path_following.py --case reversible
     python scripts/path_following.py --case oneway
-Writes results/path/<timestamp>_<case>/: eval.csv, report.md, figures.
+Writes results/path/<timestamp>_<case>/: eval.csv, report.md, path_<layout>.png
+(optimized knee and 9/8-propeller capped knee vs their 20 random layouts).
+To redo only the figures:  python scripts/path_following.py --case oneway --figures-only results/path/<folder>
 """
 import argparse
 import csv
@@ -76,22 +78,18 @@ def job(args):
     lay = load(ROOT / g["path"])
     gains = PIDGains(**g["gains"])
     caps = axis_capacities(lay.M(), lay.u_min, lay.u_max)
-    rows, curves = [], {}
-    keep_curve = group(g["layout"]) != g["layout"] or g["layout"] in OPTIMIZED
+    rows = []
     for name in CONTROLLERS:
         for ws in WINDS:
             for d in DIRECTIONS:
                 ctrl = (make_pid(gains, params) if name == "PID" else
                         RLController.load(c[name], caps, None, base_pid=make_pid(gains, params)))
-                log = keep_curve and ws == 3.0 and d == 0.0
-                r = run_path_episode(lay, params, ctrl, CirclePath(), wind(ws, d), SEED, log=log)
+                r = run_path_episode(lay, params, ctrl, CirclePath(), wind(ws, d), SEED)
                 rows.append({"layout": g["layout"], "n_props": lay.n_props, "controller": name, "wind_m_s": ws,
                              "wind_dir_deg": d, **{k: r[k] for k in ("rms_err_m", "max_err_m", "rms_yaw_rad",
                                                                      "effort_N2s", "saturation_pct", "survived",
                                                                      "completed")}})
-                if log:
-                    curves[name] = {"err": r["log"]["err_1hz"], "xy": r["log"]["x"][:, :2]}
-    return rows, (g["layout"], curves)
+    return rows
 
 
 def summarize(rows):
@@ -151,68 +149,109 @@ def report(case, summ, out):
     print("\n".join(L))
 
 
-def figures(case, curves, out):
+def fly_logged(args):
+    """3 m/s toward 0 deg with logs, every controller, one layout (for the figures)."""
+    case, gfile = args
+    c = CASES[case]
+    g = json.load(open(gfile))
+    params = DynamicsParams.from_config(load_config("sphere"))
+    lay = load(ROOT / g["path"])
+    gains = PIDGains(**g["gains"])
+    caps = axis_capacities(lay.M(), lay.u_min, lay.u_max)
+    cv = {"n": lay.n_props}
+    for name in CONTROLLERS:
+        ctrl = (make_pid(gains, params) if name == "PID" else
+                RLController.load(c[name], caps, None, base_pid=make_pid(gains, params)))
+        r = run_path_episode(lay, params, ctrl, CirclePath(), wind(3.0, 0.0), SEED, log=True)
+        cv[name] = {"err": r["log"]["err_1hz"], "xy": r["log"]["x"][:, :2], "survived": r["survived"]}
+    return g["layout"], cv
+
+
+def figure(case, opt, curves, out):
+    """Error around the circle and top view: one optimized layout vs the 20 random ones with the same N."""
     import matplotlib.pyplot as plt
-    knee = curves.get("sphere_knee", {})
-    n = None
-    for lab in curves:
-        m = re.match(r"^sphere_random_N(\d+)_\d+$", lab)
-        if m:
-            n = m.group(1)
-    if not knee or n is None:
-        return
-    rand = [cv for lab, cv in curves.items() if re.match(rf"^sphere_random_N{n}_\d+$", lab)]
+    knee = curves[opt]
+    n = knee["n"]
+    prefix = "maxN11_" if opt.startswith("maxN11_") else ""
+    rand = [cv for lab, cv in curves.items() if re.match(rf"^{prefix}sphere_random_N{n}_\d+$", lab)]
     path = CirclePath()
-    fig, axes = plt.subplots(2, 3, figsize=(15, 8.4))
+    deg = lambda m: np.degrees(path.omega * np.arange(1, m + 1))
+    fig, axes = plt.subplots(2, 3, figsize=(15, 8.6))
+    top = 0
     for j, ctrl in enumerate(CONTROLLERS):
-        ax = axes[0, j]
-        t = np.arange(1, 651)
-        ang = np.degrees(path.omega * t)
-        errs = [cv[ctrl]["err"] for cv in rand if ctrl in cv]
-        m = min(len(e) for e in errs + [knee[ctrl]["err"]])
-        E = np.array([e[:m] for e in errs if len(e) >= m])
-        ax.fill_between(ang[:m], np.percentile(E, 25, axis=0), np.percentile(E, 75, axis=0), color="0.8",
-                        label=f"random {n}-propeller layouts (middle half)")
-        ax.plot(ang[:m], np.median(E, axis=0), color="0.45", lw=1.2, label="random (median)")
-        ax.plot(ang[:len(knee[ctrl]['err'])], knee[ctrl]["err"], color="#2a78d6", lw=1.5, label="optimized knee")
-        ax.set_title({"PID": "Classic controller", "residual": "Residual learning", "plain": "Plain learning"}[ctrl])
-        ax.set_xlabel("Position around the circle [deg]"); ax.set_xlim(0, 360)
+        ax, ax2 = axes[0, j], axes[1, j]
+        lost = 0
+        for i, cv in enumerate(rand):
+            e = cv[ctrl]["err"]
+            ax.plot(deg(len(e)), e, color="0.55", lw=0.6, alpha=0.45,
+                    label=f"random {n}-propeller layouts (20)" if i == 0 else None)
+            if not cv[ctrl]["survived"]:
+                lost += 1
+                ax.plot(deg(len(e))[-1], min(e[-1], 10), "x", color="#eb6834", ms=6,
+                        label="random layout lost the path" if lost == 1 else None)
+            top = max(top, float(np.max(e)))
+        e = knee[ctrl]["err"]
+        ax.plot(deg(len(e)), e, color="#2a78d6", lw=1.5, label=f"optimized ({opt})")
+        if not knee[ctrl]["survived"]:
+            ax.plot(deg(len(e))[-1], min(e[-1], 10), "X", color="#2a78d6", ms=9)
+        name = {"PID": "Classic controller", "residual": "Residual learning", "plain": "Plain learning"}[ctrl]
+        ax.set_title(f"{name}  (random layouts lost: {lost} of {len(rand)})", fontsize=11)
+        ax.set_xlabel("Position around the circle [deg]"); ax.set_xlim(0, 360); ax.grid(alpha=0.3)
         if j == 0:
             ax.set_ylabel("Tracking error [m]"); ax.legend(fontsize=8, loc="upper right")
-        ax.grid(alpha=0.3)
-        ax2 = axes[1, j]
         th = np.linspace(0, 2 * np.pi, 400)
         ax2.plot(path.radius_m * np.sin(th), path.radius_m * (1 - np.cos(th)), "k--", lw=0.8, label="reference")
-        worst = max(rand, key=lambda cv: np.sqrt(np.mean(cv[ctrl]["err"] ** 2)) if ctrl in cv else 0)
+        worst = max(rand, key=lambda cv: (not cv[ctrl]["survived"], np.sqrt(np.mean(cv[ctrl]["err"] ** 2))))
         ax2.plot(*worst[ctrl]["xy"].T, color="#eb6834", lw=1.0, label="worst random layout")
-        ax2.plot(*knee[ctrl]["xy"].T, color="#2a78d6", lw=1.2, label="optimized knee")
+        ax2.plot(*knee[ctrl]["xy"].T, color="#2a78d6", lw=1.2, label="optimized")
         ax2.set_aspect("equal"); ax2.grid(alpha=0.3); ax2.set_xlabel("x [m]")
         if j == 0:
             ax2.set_ylabel("y [m]"); ax2.legend(fontsize=8, loc="center")
-    fig.suptitle(f"Path following, {CASES[case]['label']}: 50 m circle at 0.5 m/s, 3 m/s gusty wind "
-                 f"(toward 0 deg)", fontsize=12)
+    for ax in axes[0]:
+        ax.set_ylim(0, min(top, 10) * 1.05)
+    fig.suptitle(f"Path following, {CASES[case]['label']}, {n} propellers: 50 m circle at 0.5 m/s, "
+                 f"3 m/s gusty wind (toward 0 deg). x = lost the path (more than 10 m off or tipped over)",
+                 fontsize=12)
     fig.tight_layout()
-    fig.savefig(out / "path_error_and_tracks.png", dpi=160)
+    fig.savefig(out / f"path_{opt}.png", dpi=160)
     plt.close(fig)
+
+
+def figures(case, out, workers):
+    c = CASES[case]
+    files = {f.stem: f for f in (c["pid"] / "gains").glob("*.json")}
+    want = [lab for lab in ("sphere_knee", "maxN11_sphere_knee") if lab in files]
+    ns = {lab: load(ROOT / json.load(open(files[lab]))["path"]).n_props for lab in want}
+    for lab in list(ns):
+        prefix = "maxN11_" if lab.startswith("maxN11_") else ""
+        want += [r for r in files if re.match(rf"^{prefix}sphere_random_N{ns[lab]}_\d+$", r)]
+    with Pool(workers) as p:
+        curves = dict(p.map(fly_logged, [(case, str(files[lab])) for lab in want]))
+    for opt in ("sphere_knee", "maxN11_sphere_knee"):
+        if opt in curves:
+            figure(case, opt, curves, out)
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--case", choices=list(CASES), required=True)
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--figures-only", metavar="DIR", help="redo only the figures in an existing results folder")
     a = ap.parse_args()
     c = CASES[a.case]
+    if a.figures_only:
+        figures(a.case, Path(a.figures_only), a.workers)
+        return
     out = ROOT / "results" / "path" / f"{datetime.now():%Y%m%d_%H%M%S}_{a.case}"
     out.mkdir(parents=True)
     jobs = [(a.case, str(f)) for f in sorted((c["pid"] / "gains").glob("*.json"))]
     with Pool(a.workers) as p:
         res = p.map(job, jobs)
-    rows = [r for rs, _ in res for r in rs]
-    curves = {lab: cv for _, (lab, cv) in res if cv}
+    rows = [r for rs in res for r in rs]
     with open(out / "eval.csv", "w", newline="") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0])); w.writeheader(); w.writerows(rows)
     report(a.case, summarize(rows), out)
-    figures(a.case, curves, out)
+    figures(a.case, out, a.workers)
     print(f"-> {out.relative_to(ROOT)}")
 
 

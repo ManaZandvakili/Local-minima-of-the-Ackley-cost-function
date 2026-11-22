@@ -453,6 +453,52 @@ RMS position error after the failure (median over which motor fails):
 
 All numbers are seed 0; Phase 5 should repeat the RL runs with 5 seeds.
 
+## Path following: the conference paper's circle
+
+Script `scripts/path_following.py`; results `results/path/20261122_053908_reversible/` and
+`results/path/20261122_060340_oneway/` (report.md, eval.csv, figures `path_sphere_knee.png`,
+`path_maxN11_sphere_knee.png`). Videos `results/videos/path_*.mp4`.
+
+Test: the paper's reference (Final.py): 50 m circle at 0.5 m/s, 650 s (one lap), nose along the path, seed 7.
+Wind 1.5 m/s (the paper's) and 3 m/s, each toward 0/120/240 deg, with turbulence 0.5 m/s and 2 gusts per minute.
+The controllers are the station-keeping ones, used as they are: the classic controller gets the
+moving reference (position, velocity, acceleration, heading, heading rate), and the learning controllers see their
+error relative to the moving target (no retraining). "Completed" = error under 3 m for the whole lap (the paper's
+rule). Values below: median over the 3 directions (and over the 20 random layouts).
+
+**3 m/s wind, classic / residual / plain, RMS error [m], completed share**
+
+| Case | Layout | Classic | Residual | Plain | Completed |
+|---|---|---|---|---|---|
+| reversible | optimized knee, 14 | 0.236 | 0.160 | 0.200 | 100 / 100 / 100% |
+| reversible | random 14 (20) | 0.323 | 0.204 | 0.228 | 98 / 100 / 100% |
+| reversible | optimized capped, 8 | 0.289 | 0.185 | 0.226 | 100 / 100 / 100% |
+| reversible | random 8 (20) | 0.511 | 0.499 | 0.957 | 37 / 42 / 12% |
+| one-way | optimized knee, 15 | 0.346 | 0.293 | 0.538 | 100 / 100 / 33% |
+| one-way | random 15 (20) | 1.747 | 1.712 | 2.086 | 5 / 7 / 3% |
+| one-way | optimized capped, 9 | 1.446 | 1.614 | 2.454 | 0 / 0 / 0% |
+| one-way | random 9 (20) | 4.780 | 4.826 | 5.283 | 0 / 0 / 0% |
+| reversible | paper best, 16 | 0.200 | 0.138 | 0.213 | 100 / 100 / 100% |
+| one-way | paper best, 16 | 0.288 | 0.223 | 0.497 | 100 / 100 / 67% |
+| reversible | STARLab 6-thruster | 2.625 | 2.210 | 2.048 | 0 / 0 / 0% |
+
+(For flights that lost the path, the RMS is over the part flown, so it understates them; read the completed share.)
+
+At the paper's 1.5 m/s every optimized layout completes with every controller (0.07 to 0.19 m). The one-way random
+layouts already struggle there: 9 propellers 27% completed, 15 propellers 88%.
+
+Findings:
+- The station-keeping result carries over to path following. With one-way propellers, the layout decides whether
+  the lap can be flown: the optimized 15-propeller layout completes every 3 m/s lap with the classic controller and
+  residual learning, while the random 15-propeller layouts complete 5%. With reversible propellers everything
+  flies at 14 propellers, but at 8 propellers only the optimized layout completes every lap (random: 37%).
+- Residual learning is the best controller in 7 of 8 optimized-layout rows, with no retraining for a moving
+  target (for example 0.236 to 0.160 m on the reversible knee). Plain learning is less reliable (one-way knee 33%
+  completed).
+- Nine one-way propellers are too few for 3 m/s on the circle: even the optimized layout falls more than 3 m
+  behind (but it survives longer than random layouts: 500 s vs about 156 s in the 0 deg video).
+- The STARLab 6-thruster layout cannot fly the circle in 3 m/s wind (2 to 2.6 m error); it completes at 1.5 m/s.
+
 ## Open questions
 
 **B. Maximum thrust per propeller.** No published thrust figure exists for the
